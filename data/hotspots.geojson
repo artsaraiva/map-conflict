@@ -1,0 +1,335 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [56.27, 26.56] },
+      "properties": {
+        "name": "Strait of Hormuz",
+        "display_name": "Strait of Hormuz, Persian Gulf",
+        "aliases": ["hormuz", "strait of hormuz", "hormuz strait"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [35.5, 31.5] },
+      "properties": {
+        "name": "Gaza Strip",
+        "display_name": "Gaza Strip, Palestine",
+        "aliases": ["gaza", "gaza strip", "gaza city"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [35.21, 31.77] },
+      "properties": {
+        "name": "West Bank",
+        "display_name": "West Bank, Palestine",
+        "aliases": ["west bank", "judea and samaria"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [36.0, 49.0] },
+      "properties": {
+        "name": "Eastern Ukraine",
+        "display_name": "Donbas Region, Eastern Ukraine",
+        "aliases": ["donbas", "donetsk", "luhansk", "eastern ukraine", "donbass"],
+        "region": "europe"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [34.5, 46.8] },
+      "properties": {
+        "name": "Crimea",
+        "display_name": "Crimean Peninsula",
+        "aliases": ["crimea", "crimean peninsula"],
+        "region": "europe"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [121.0, 23.5] },
+      "properties": {
+        "name": "Taiwan Strait",
+        "display_name": "Taiwan Strait",
+        "aliases": ["taiwan strait", "taiwan", "formosa strait", "strait of taiwan"],
+        "region": "east_asia"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [116.0, 12.0] },
+      "properties": {
+        "name": "South China Sea",
+        "display_name": "South China Sea",
+        "aliases": ["south china sea", "spratly islands", "scarborough shoal"],
+        "region": "east_asia"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [78.0, 34.5] },
+      "properties": {
+        "name": "Kashmir",
+        "display_name": "Kashmir Region",
+        "aliases": ["kashmir", "jammu and kashmir", "line of control", "aksai chin", "ladakh"],
+        "region": "south_asia"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [126.97, 38.5] },
+      "properties": {
+        "name": "Korean DMZ",
+        "display_name": "Korean Demilitarized Zone",
+        "aliases": ["dmz", "korean dmz", "38th parallel", "demilitarized zone"],
+        "region": "east_asia"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [43.35, 12.8] },
+      "properties": {
+        "name": "Bab el-Mandeb",
+        "display_name": "Bab el-Mandeb Strait",
+        "aliases": ["bab el-mandeb", "bab al-mandab", "red sea", "gulf of aden"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.3, 30.5] },
+      "properties": {
+        "name": "Suez Canal",
+        "display_name": "Suez Canal, Egypt",
+        "aliases": ["suez canal", "suez"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-79.9, 9.1] },
+      "properties": {
+        "name": "Panama Canal",
+        "display_name": "Panama Canal, Panama",
+        "aliases": ["panama canal", "panama"],
+        "region": "americas"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [37.0, 36.2] },
+      "properties": {
+        "name": "Aleppo",
+        "display_name": "Aleppo, Syria",
+        "aliases": ["aleppo", "northern syria"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [44.37, 33.31] },
+      "properties": {
+        "name": "Baghdad",
+        "display_name": "Baghdad, Iraq",
+        "aliases": ["baghdad", "iraq"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [51.39, 35.69] },
+      "properties": {
+        "name": "Tehran",
+        "display_name": "Tehran, Iran",
+        "aliases": ["tehran", "iran"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [36.82, -1.29] },
+      "properties": {
+        "name": "Nairobi",
+        "display_name": "Nairobi, Kenya",
+        "aliases": ["nairobi", "kenya"],
+        "region": "africa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.58, 0.35] },
+      "properties": {
+        "name": "Kampala",
+        "display_name": "Kampala, Uganda",
+        "aliases": ["kampala", "uganda"],
+        "region": "africa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [29.0, -2.0] },
+      "properties": {
+        "name": "Eastern Congo",
+        "display_name": "Eastern DRC",
+        "aliases": ["eastern congo", "drc", "congo", "goma", "north kivu"],
+        "region": "africa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.53, 15.59] },
+      "properties": {
+        "name": "Khartoum",
+        "display_name": "Khartoum, Sudan",
+        "aliases": ["khartoum", "sudan"],
+        "region": "africa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [45.0, 5.0] },
+      "properties": {
+        "name": "Mogadishu",
+        "display_name": "Mogadishu, Somalia",
+        "aliases": ["mogadishu", "somalia"],
+        "region": "africa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [40.49, 9.01] },
+      "properties": {
+        "name": "Addis Ababa",
+        "display_name": "Addis Ababa, Ethiopia",
+        "aliases": ["addis ababa", "ethiopia", "tigray"],
+        "region": "africa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [69.17, 34.53] },
+      "properties": {
+        "name": "Kabul",
+        "display_name": "Kabul, Afghanistan",
+        "aliases": ["kabul", "afghanistan"],
+        "region": "south_asia"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [46.72, 24.71] },
+      "properties": {
+        "name": "Riyadh",
+        "display_name": "Riyadh, Saudi Arabia",
+        "aliases": ["riyadh", "saudi arabia", "saudi"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [44.2, 15.35] },
+      "properties": {
+        "name": "Sanaa",
+        "display_name": "Sanaa, Yemen",
+        "aliases": ["sanaa", "yemen", "houthi"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [35.5, 33.89] },
+      "properties": {
+        "name": "Beirut",
+        "display_name": "Beirut, Lebanon",
+        "aliases": ["beirut", "lebanon", "hezbollah"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [80.0, 35.0] },
+      "properties": {
+        "name": "India-China Border",
+        "display_name": "India-China LAC (Line of Actual Control)",
+        "aliases": ["lac", "line of actual control", "india china border", "galwan valley", "arunachal pradesh"],
+        "region": "south_asia"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [28.95, 41.01] },
+      "properties": {
+        "name": "Istanbul",
+        "display_name": "Istanbul, Turkey",
+        "aliases": ["istanbul", "bosphorus", "turkish straits"],
+        "region": "europe"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [104.07, 1.35] },
+      "properties": {
+        "name": "Strait of Malacca",
+        "display_name": "Strait of Malacca",
+        "aliases": ["malacca", "strait of malacca", "malacca strait"],
+        "region": "southeast_asia"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [47.98, 29.37] },
+      "properties": {
+        "name": "Kuwait",
+        "display_name": "Kuwait",
+        "aliases": ["kuwait", "persian gulf"],
+        "region": "middle_east"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [37.62, 55.75] },
+      "properties": {
+        "name": "Moscow",
+        "display_name": "Moscow, Russia",
+        "aliases": ["moscow", "kremlin"],
+        "region": "europe"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [30.52, 50.45] },
+      "properties": {
+        "name": "Kyiv",
+        "display_name": "Kyiv, Ukraine",
+        "aliases": ["kyiv", "kiev", "ukraine"],
+        "region": "europe"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-77.04, 38.9] },
+      "properties": {
+        "name": "Washington DC",
+        "display_name": "Washington DC, USA",
+        "aliases": ["washington", "washington dc", "pentagon", "white house"],
+        "region": "americas"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [116.39, 39.91] },
+      "properties": {
+        "name": "Beijing",
+        "display_name": "Beijing, China",
+        "aliases": ["beijing", "china"],
+        "region": "east_asia"
+      }
+    }
+  ]
+}

@@ -1,0 +1,313 @@
+@import "tailwindcss";
+
+:root {
+  --background: #081116;
+  --foreground: #eef3ef;
+  --panel: #0f1a20;
+  --panel-border: #2b3b42;
+  --text-dim: #8da0a6;
+  --text-bright: #f2ece0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-rajdhani);
+  --font-mono: var(--font-space-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at top, rgba(91, 127, 139, 0.16), transparent 24%),
+    radial-gradient(circle at 78% 12%, rgba(255, 96, 64, 0.1), transparent 20%),
+    linear-gradient(180deg, #091117 0%, #071016 50%, #050b10 100%);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+  overflow: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.maplibregl-canvas {
+  filter: saturate(0.82) contrast(1.05) brightness(0.9);
+}
+
+.maplibregl-popup-content {
+  background: rgba(10, 17, 22, 0.94) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 76, 84, 0.75) !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+  color: #e6eeea !important;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45) !important;
+  max-width: 320px !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: rgba(10, 17, 22, 0.94) !important;
+  border-bottom-color: rgba(10, 17, 22, 0.94) !important;
+}
+
+.maplibregl-popup-close-button {
+  color: #92a5ab !important;
+  font-size: 16px !important;
+}
+
+.map-tooltip-card {
+  font-family: var(--font-sans), sans-serif;
+}
+
+.map-tooltip-title {
+  color: #f1ebdd;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.map-tooltip-meta {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a8ae;
+}
+
+.map-tooltip-divider {
+  color: #506169;
+}
+
+.map-tooltip-location {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #d0dddc;
+}
+
+.map-tooltip-sources {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #7f9399;
+}
+
+.maplibregl-ctrl-group {
+  background: rgba(12, 19, 24, 0.9) !important;
+  border: 1px solid rgba(55, 72, 80, 0.8) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25) !important;
+}
+
+.maplibregl-ctrl-group button {
+  background: transparent !important;
+  border-bottom-color: rgba(55, 72, 80, 0.45) !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background: rgba(34, 47, 54, 0.55) !important;
+}
+
+.maplibregl-ctrl-group button span {
+  filter: invert(0.94) sepia(0.14) saturate(0.35) hue-rotate(145deg) !important;
+}
+
+.maplibregl-ctrl-attrib {
+  background: rgba(10, 16, 21, 0.66) !important;
+  color: #70848b !important;
+  font-size: 10px !important;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: #91a7ad !important;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(66, 81, 88, 0.7);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(94, 111, 119, 0.8);
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Hide scrollbar for horizontal media gallery */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─── Breaking News Ticker ─── */
+
+.news-ticker-bar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  background: linear-gradient(
+    90deg,
+    rgba(8, 12, 16, 0.96) 0%,
+    rgba(10, 16, 22, 0.94) 100%
+  );
+  border-top: 1px solid rgba(50, 66, 74, 0.7);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  font-family: var(--font-sans), sans-serif;
+}
+
+.news-ticker-label {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 16px 0 18px;
+  height: 100%;
+  background: linear-gradient(
+    135deg,
+    rgba(180, 40, 30, 0.85) 0%,
+    rgba(140, 28, 20, 0.9) 100%
+  );
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  border-right: 1px solid rgba(255, 60, 40, 0.4);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.news-ticker-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff4444;
+  box-shadow: 0 0 8px #ff4444, 0 0 16px rgba(255, 68, 68, 0.5);
+  animation: ticker-dot-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ticker-dot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 8px #ff4444, 0 0 16px rgba(255, 68, 68, 0.5);
+  }
+  50% {
+    opacity: 0.4;
+    box-shadow: 0 0 4px #ff4444, 0 0 8px rgba(255, 68, 68, 0.3);
+  }
+}
+
+.news-ticker-track {
+  flex: 1;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 3%,
+    black 97%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 3%,
+    black 97%,
+    transparent 100%
+  );
+}
+
+.news-ticker-scroll {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  white-space: nowrap;
+  animation: ticker-scroll 108s linear infinite;
+  padding-left: 12px;
+  font-size: 13px;
+  color: #c8d4d4;
+  letter-spacing: 0.02em;
+}
+
+.news-ticker-scroll:hover {
+  animation-play-state: paused;
+}
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-severity {
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-right: 6px;
+}
+
+.ticker-location {
+  color: #f0eadb;
+  font-weight: 600;
+}
+
+.ticker-dash {
+  color: #506169;
+  margin: 0 4px;
+}
+
+.ticker-title {
+  color: #a8b8bc;
+  font-weight: 400;
+}
+
+.ticker-bullet {
+  color: #3a4a52;
+  margin: 0 18px;
+  font-size: 8px;
+}

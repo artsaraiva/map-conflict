@@ -1,0 +1,82 @@
+import { EventMapPoint, GeoEvent, EventListResponse, MapFilters } from "./types";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+/** Resolve relative media paths (e.g. /media/telegram/...) to absolute backend URLs */
+function resolveMediaUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (url.startsWith("/media/")) return `${API_URL}${url}`;
+  return url;
+}
+
+/** Resolve media URLs in an EventMapPoint */
+function resolveMapPoint(point: EventMapPoint): EventMapPoint {
+  return { ...point, image_url: resolveMediaUrl(point.image_url) };
+}
+
+/** Resolve media URLs in a full GeoEvent (including nested articles) */
+function resolveGeoEvent(event: GeoEvent): GeoEvent {
+  return {
+    ...event,
+    articles: event.articles.map((a) => ({
+      ...a,
+      image_url: resolveMediaUrl(a.image_url),
+      video_url: resolveMediaUrl(a.video_url),
+    })),
+  };
+}
+
+export async function fetchMapPoints(
+  filters?: Partial<MapFilters>
+): Promise<EventMapPoint[]> {
+  const params = new URLSearchParams();
+  const sinceHours = filters?.sinceHours ?? 72;
+  params.set("since_hours", sinceHours.toString());
+
+  if (filters?.eventTypes && filters.eventTypes.length > 0) {
+    params.set("event_type", filters.eventTypes.join(","));
+  }
+  if (filters?.severities && filters.severities.length > 0) {
+    params.set("severity", filters.severities.join(","));
+  }
+
+  const res = await fetch(
+    `${API_URL}/api/events/map-points?${params}`
+  );
+  if (!res.ok) throw new Error("Failed to fetch map points");
+  const data: EventMapPoint[] = await res.json();
+  return data.map(resolveMapPoint);
+}
+
+export async function fetchEvent(eventId: number): Promise<GeoEvent> {
+  const res = await fetch(`${API_URL}/api/events/${eventId}`);
+  if (!res.ok) throw new Error("Failed to fetch event");
+  const data: GeoEvent = await res.json();
+  return resolveGeoEvent(data);
+}
+
+export async function fetchEvents(params?: {
+  sinceHours?: number;
+  eventType?: string;
+  severity?: string;
+  limit?: number;
+}): Promise<EventListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.sinceHours)
+    searchParams.set("since_hours", params.sinceHours.toString());
+  if (params?.eventType) searchParams.set("event_type", params.eventType);
+  if (params?.severity) searchParams.set("severity", params.severity);
+  if (params?.limit) searchParams.set("limit", params.limit.toString());
+
+  const res = await fetch(`${API_URL}/api/events/?${searchParams}`);
+  if (!res.ok) throw new Error("Failed to fetch events");
+  return res.json();
+}
+
+export async function triggerPipeline(): Promise<{ status: string }> {
+  const res = await fetch(`${API_URL}/api/pipeline/trigger`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error("Failed to trigger pipeline");
+  return res.json();
+}
