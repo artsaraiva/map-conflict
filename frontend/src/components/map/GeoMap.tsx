@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useCallback } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import Supercluster from "supercluster";
 import {
   EventMapPoint,
+  EventType,
   EVENT_TYPE_CONFIG,
   SEVERITY_CONFIG,
   getEventVisualFamily,
@@ -34,16 +36,54 @@ type HotspotFeature = GeoJSON.Feature<
   Record<string, number | string>
 >;
 
+// ─── Event point properties stored in Supercluster ───
+interface EventPointProps {
+  id: number;
+  title: string;
+  event_type: EventType;
+  severity: string;
+  family: string;
+  location_name: string;
+  article_count: number;
+  color: string;
+  pulseColor: string;
+  hotspotColor: string;
+  size: number;
+  pulseSize: number;
+  signalOpacity: number;
+  iconImage: string;
+}
+
+// ─── Cluster aggregate properties ───
+interface ClusterAggProps {
+  // Dominant color for the cluster (from highest-severity event type)
+  color: string;
+  // Sum of severity weights (used to size the cluster circle)
+  totalWeight: number;
+  // Highest severity level name
+  maxSeverity: string;
+}
+
 const zoomBreakpoints = {
   globalMax: 3.4,
   regionalMax: 6.8,
 };
 
+// ─── Supercluster config ───
+const CLUSTER_RADIUS = 55; // px — cluster merge radius
+const CLUSTER_MAX_ZOOM = 12; // stop clustering above this zoom
+
 // ─── Throttle constants ───
-// Vehicle GeoJSON setData() is the most expensive call — limit to ~20fps
-const VEHICLE_UPDATE_INTERVAL = 3; // update every 3rd frame
-// Pulse/hotspot paint property updates — limit to ~30fps
-const PAINT_UPDATE_INTERVAL = 2; // update every 2nd frame
+const VEHICLE_UPDATE_INTERVAL = 3; // ~20fps
+const PAINT_UPDATE_INTERVAL = 2; // ~30fps
+
+// ─── Severity ordering for cluster aggregation ───
+const SEVERITY_ORDER: Record<string, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  critical: 3,
+};
 
 // ─── Main animation loop (runs outside React lifecycle) ───
 
@@ -56,7 +96,6 @@ function startMainAnimation(
   let frameCount = 0;
 
   const animate = () => {
-    // Skip entirely when browser tab is hidden — no point rendering offscreen
     if (document.hidden) {
       setAnimationFrame(requestAnimationFrame(animate));
       return;
@@ -109,8 +148,6 @@ function startMainAnimation(
     }
 
     // ─── Vehicle animation (throttled to ~20fps) ───
-    // Advance vehicle state every frame to keep movement smooth,
-    // but only push GeoJSON to the GPU at the throttled rate
     advanceAllVehicles(vehicles);
 
     if (frameCount % VEHICLE_UPDATE_INTERVAL === 0) {
@@ -125,7 +162,6 @@ function startMainAnimation(
         ) as maplibregl.GeoJSONSource | undefined;
         trailSource?.setData(vehicleTrailsToGeoJSON(vehicles));
 
-        // Dynamically scale trail opacity based on zoom level
         if (m.getLayer("vehicle-trail-layer")) {
           const z = m.getZoom();
           const zoomOpacity =
@@ -155,54 +191,83 @@ export default function GeoMap({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
 
-  // ─── Stable refs for values needed inside map callbacks ───
-  // This prevents the map init useEffect from re-running when
-  // these values change, which would tear down and rebuild the entire map.
+  // ─── Stable refs ───
   const onEventClickRef = useRef(onEventClick);
   onEventClickRef.current = onEventClick;
 
-  const eventGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
-    return {
-      type: "FeatureCollection",
-      features: events.map((event) => {
-        const typeConfig = EVENT_TYPE_CONFIG[event.event_type];
-        const severityConfig = SEVERITY_CONFIG[event.severity];
-        const family = getEventVisualFamily(event.event_type);
+  // ─── Supercluster index ref ───
+  const clusterIndex = useRef<Supercluster<EventPointProps, ClusterAggProps> | null>(null);
 
-        return {
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [event.longitude, event.latitude],
-          },
-          properties: {
-            id: event.id,
-            title: event.title,
-            event_type: event.event_type,
-            severity: event.severity,
-            family,
-            location_name: event.location_name,
-            article_count: event.article_count,
-            color: typeConfig?.color ?? "#8e97ab",
-            pulseColor:
-              typeConfig?.pulseColor ?? "rgba(142, 151, 171, 0.28)",
-            hotspotColor:
-              typeConfig?.hotspotColor ?? "rgba(142, 151, 171, 0.16)",
-            size: severityConfig?.size ?? 12,
-            pulseSize: severityConfig?.pulseSize ?? 30,
-            signalOpacity:
-              event.severity === "critical"
-                ? 1
-                : event.severity === "high"
-                  ? 0.9
-                  : 0.72,
-            // Icon image name for the symbol layer
-            iconImage: `event-icon-${event.event_type}`,
-          },
-        } satisfies GeoJSON.Feature;
-      }),
-    };
+  // ─── Build supercluster point features from events ───
+  const eventPoints = useMemo<Supercluster.PointFeature<EventPointProps>[]>(() => {
+    return events.map((event) => {
+      const typeConfig = EVENT_TYPE_CONFIG[event.event_type];
+      const severityConfig = SEVERITY_CONFIG[event.severity];
+      const family = getEventVisualFamily(event.event_type);
+
+      return {
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [event.longitude, event.latitude],
+        },
+        properties: {
+          id: event.id,
+          title: event.title,
+          event_type: event.event_type,
+          severity: event.severity,
+          family,
+          location_name: event.location_name,
+          article_count: event.article_count,
+          color: typeConfig?.color ?? "#8e97ab",
+          pulseColor: typeConfig?.pulseColor ?? "rgba(142, 151, 171, 0.28)",
+          hotspotColor: typeConfig?.hotspotColor ?? "rgba(142, 151, 171, 0.16)",
+          size: severityConfig?.size ?? 12,
+          pulseSize: severityConfig?.pulseSize ?? 30,
+          signalOpacity:
+            event.severity === "critical"
+              ? 1
+              : event.severity === "high"
+                ? 0.9
+                : 0.72,
+          iconImage: `event-icon-${event.event_type}`,
+        },
+      };
+    });
   }, [events]);
+
+  // ─── Rebuild cluster index when points change ───
+  useEffect(() => {
+    const index = new Supercluster<EventPointProps, ClusterAggProps>({
+      radius: CLUSTER_RADIUS,
+      maxZoom: CLUSTER_MAX_ZOOM,
+      minPoints: 2,
+      // Map: extract cluster-relevant props from each point
+      map: (props) => ({
+        color: props.color,
+        totalWeight: getSeverityWeight(props.severity as EventMapPoint["severity"]),
+        maxSeverity: props.severity,
+      }),
+      // Reduce: merge two clusters — keep the higher severity color and sum weights
+      reduce: (accumulated, props) => {
+        accumulated.totalWeight += props.totalWeight;
+        if (
+          (SEVERITY_ORDER[props.maxSeverity] ?? 0) >
+          (SEVERITY_ORDER[accumulated.maxSeverity] ?? 0)
+        ) {
+          accumulated.maxSeverity = props.maxSeverity;
+          accumulated.color = props.color;
+        }
+      },
+    });
+    index.load(eventPoints);
+    clusterIndex.current = index;
+
+    // Push initial cluster data to the map if it's ready
+    if (map.current) {
+      updateClusters(map.current, index);
+    }
+  }, [eventPoints]);
 
   const hotspotGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
     const grouped = new Map<string, HotspotFeature>();
@@ -221,8 +286,7 @@ export default function GeoMap({
       if (existing) {
         existing.properties.intensity =
           Number(existing.properties.intensity) + influence;
-        existing.properties.count =
-          Number(existing.properties.count) + 1;
+        existing.properties.count = Number(existing.properties.count) + 1;
         existing.properties.radius = Math.min(
           Number(existing.properties.radius) + severityWeight * 10,
           90
@@ -256,9 +320,6 @@ export default function GeoMap({
   }, [events]);
 
   // ─── Map initialization (runs ONCE) ───
-  // We intentionally use an empty dependency array here. Data updates
-  // are handled reactively by the separate useEffects below, and the
-  // onEventClick callback is accessed via a stable ref.
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
@@ -316,8 +377,6 @@ export default function GeoMap({
     );
 
     const m = map.current;
-
-    // ─── Generate animated data ───
     const vehicles = createAnimatedVehicles();
 
     m.on("load", () => {
@@ -325,14 +384,10 @@ export default function GeoMap({
       m.addLayer({
         id: "background-fade",
         type: "background",
-        paint: {
-          "background-color": "rgba(3, 10, 14, 0.14)",
-        },
+        paint: { "background-color": "rgba(3, 10, 14, 0.14)" },
       });
 
-      // ─── Event data sources ───
-      // Initial data will be set reactively by the useEffects below,
-      // but we seed with empty collections so the sources exist immediately.
+      // ─── Data sources ───
       m.addSource("events", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -406,11 +461,92 @@ export default function GeoMap({
         },
       });
 
-      // ─── Event circle layers ───
+      // ─── Cluster layers (rendered for features with cluster: true) ───
+      // Outer glow ring
+      m.addLayer({
+        id: "cluster-glow",
+        type: "circle",
+        source: "events",
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["get", "point_count"],
+            2,
+            28,
+            10,
+            40,
+            50,
+            55,
+          ],
+          "circle-color": ["get", "color"],
+          "circle-opacity": 0.15,
+          "circle-blur": 0.8,
+        },
+      });
+
+      // Main cluster circle
+      m.addLayer({
+        id: "cluster-circles",
+        type: "circle",
+        source: "events",
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["get", "point_count"],
+            2,
+            18,
+            10,
+            28,
+            50,
+            40,
+          ],
+          "circle-color": ["get", "color"],
+          "circle-opacity": 0.85,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "rgba(248, 243, 231, 0.5)",
+          "circle-stroke-opacity": 0.6,
+        },
+      });
+
+      // Cluster count label
+      m.addLayer({
+        id: "cluster-count",
+        type: "symbol",
+        source: "events",
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": ["get", "point_count_abbreviated"],
+          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+          "text-size": [
+            "interpolate",
+            ["linear"],
+            ["get", "point_count"],
+            2,
+            12,
+            10,
+            14,
+            50,
+            16,
+          ],
+          "text-allow-overlap": true,
+        },
+        paint: {
+          "text-color": "#f8f3e7",
+          "text-halo-color": "rgba(0, 0, 0, 0.6)",
+          "text-halo-width": 1.5,
+        },
+      });
+
+      // ─── Individual event layers (only non-clustered points) ───
       m.addLayer({
         id: "event-pulse",
         type: "circle",
         source: "events",
+        filter: ["!", ["has", "point_count"]],
         paint: {
           "circle-radius": ["get", "pulseSize"],
           "circle-color": ["get", "pulseColor"],
@@ -425,6 +561,7 @@ export default function GeoMap({
         id: "event-glow",
         type: "circle",
         source: "events",
+        filter: ["!", ["has", "point_count"]],
         paint: {
           "circle-radius": ["+", ["get", "size"], 10],
           "circle-color": ["get", "color"],
@@ -447,6 +584,7 @@ export default function GeoMap({
         id: "event-dots",
         type: "circle",
         source: "events",
+        filter: ["!", ["has", "point_count"]],
         paint: {
           "circle-radius": [
             "interpolate",
@@ -502,6 +640,7 @@ export default function GeoMap({
         id: "event-icons",
         type: "symbol",
         source: "events",
+        filter: ["!", ["has", "point_count"]],
         minzoom: 5.5,
         layout: {
           "icon-image": ["get", "iconImage"],
@@ -628,9 +767,7 @@ export default function GeoMap({
         },
       });
 
-      // ─── Interactivity ───
-      // Use the ref so we always call the latest callback without
-      // needing to tear down and re-add the listener.
+      // ─── Interactivity: individual events ───
       m.on("click", "event-dots", (e) => {
         const feature = e.features?.[0];
         const eventId = feature?.properties?.id;
@@ -647,22 +784,49 @@ export default function GeoMap({
         }
       });
 
+      // ─── Interactivity: cluster click-to-zoom ───
+      m.on("click", "cluster-circles", (e) => {
+        const feature = e.features?.[0];
+        if (!feature || !clusterIndex.current) return;
+
+        const clusterId = feature.properties?.cluster_id;
+        if (clusterId == null) return;
+
+        const expansionZoom = clusterIndex.current.getClusterExpansionZoom(
+          Number(clusterId)
+        );
+        const coords = (feature.geometry as GeoJSON.Point).coordinates as [
+          number,
+          number,
+        ];
+
+        m.easeTo({
+          center: coords,
+          zoom: Math.min(expansionZoom, 14),
+          duration: 500,
+        });
+      });
+
       m.on("mouseenter", "event-dots", () => {
         m.getCanvas().style.cursor = "pointer";
       });
-
       m.on("mouseleave", "event-dots", () => {
         m.getCanvas().style.cursor = "";
       });
-
       m.on("mouseenter", "event-icons", () => {
         m.getCanvas().style.cursor = "pointer";
       });
-
       m.on("mouseleave", "event-icons", () => {
         m.getCanvas().style.cursor = "";
       });
+      m.on("mouseenter", "cluster-circles", () => {
+        m.getCanvas().style.cursor = "pointer";
+      });
+      m.on("mouseleave", "cluster-circles", () => {
+        m.getCanvas().style.cursor = "";
+      });
 
+      // ─── Tooltips ───
       const popup = new maplibregl.Popup({
         closeButton: false,
         closeOnClick: false,
@@ -670,7 +834,7 @@ export default function GeoMap({
         offset: 18,
       });
 
-      const showTooltip = (e: maplibregl.MapLayerMouseEvent) => {
+      const showEventTooltip = (e: maplibregl.MapLayerMouseEvent) => {
         const f = e.features?.[0];
         if (!f) return;
 
@@ -704,10 +868,50 @@ export default function GeoMap({
           .addTo(m);
       };
 
-      m.on("mouseenter", "event-dots", showTooltip);
-      m.on("mouseenter", "event-icons", showTooltip);
+      const showClusterTooltip = (e: maplibregl.MapLayerMouseEvent) => {
+        const f = e.features?.[0];
+        if (!f) return;
+
+        const coords = (
+          f.geometry as GeoJSON.Point
+        ).coordinates.slice() as [number, number];
+        const count = f.properties?.point_count ?? 0;
+        const severity = f.properties?.maxSeverity ?? "medium";
+
+        popup
+          .setLngLat(coords)
+          .setHTML(
+            `<div class="map-tooltip-card">
+              <div class="map-tooltip-title">${count} events</div>
+              <div class="map-tooltip-meta">
+                <span>Highest: ${severity} severity</span>
+              </div>
+              <div class="map-tooltip-sources">Click to zoom in</div>
+            </div>`
+          )
+          .addTo(m);
+      };
+
+      m.on("mouseenter", "event-dots", showEventTooltip);
+      m.on("mouseenter", "event-icons", showEventTooltip);
+      m.on("mouseenter", "cluster-circles", showClusterTooltip);
       m.on("mouseleave", "event-dots", () => popup.remove());
       m.on("mouseleave", "event-icons", () => popup.remove());
+      m.on("mouseleave", "cluster-circles", () => popup.remove());
+
+      // ─── Update clusters on viewport change ───
+      const onViewportChange = () => {
+        if (clusterIndex.current) {
+          updateClusters(m, clusterIndex.current);
+        }
+      };
+      m.on("moveend", onViewportChange);
+      m.on("zoomend", onViewportChange);
+
+      // Push initial data
+      if (clusterIndex.current) {
+        updateClusters(m, clusterIndex.current);
+      }
 
       // ─── Start unified animation loop ───
       startMainAnimation(m, vehicles, (frame) => {
@@ -723,19 +927,7 @@ export default function GeoMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Reactive data updates ───
-  // These effects push new data to existing map sources without
-  // tearing down the map. They run whenever the derived GeoJSON changes.
-  useEffect(() => {
-    if (!map.current) return;
-    const m = map.current;
-    // The source may not exist yet if the map hasn't finished loading.
-    // In that case, the 'load' handler will pick up the latest data
-    // from the ref-based reactive update on first paint.
-    const source = m.getSource("events") as maplibregl.GeoJSONSource | undefined;
-    source?.setData(eventGeoJSON);
-  }, [eventGeoJSON]);
-
+  // ─── Reactive hotspot updates ───
   useEffect(() => {
     if (!map.current) return;
     const source = map.current.getSource(
@@ -747,4 +939,31 @@ export default function GeoMap({
   return (
     <div ref={mapContainer} className="absolute inset-0 h-full w-full" />
   );
+}
+
+// ─── Helper: query supercluster for current viewport and push to map ───
+
+function updateClusters(
+  m: maplibregl.Map,
+  index: Supercluster<EventPointProps, ClusterAggProps>
+) {
+  const source = m.getSource("events") as maplibregl.GeoJSONSource | undefined;
+  if (!source) return;
+
+  const bounds = m.getBounds();
+  const zoom = Math.floor(m.getZoom());
+
+  const bbox: GeoJSON.BBox = [
+    bounds.getWest(),
+    bounds.getSouth(),
+    bounds.getEast(),
+    bounds.getNorth(),
+  ];
+
+  const clustersAndPoints = index.getClusters(bbox, zoom);
+
+  source.setData({
+    type: "FeatureCollection",
+    features: clustersAndPoints as GeoJSON.Feature[],
+  });
 }
