@@ -29,7 +29,10 @@ export interface GeoEvent {
   articles: Article[];
 }
 
-export interface RelatedEvent {
+export type LinkType = "response_to" | "escalation_of" | "same_campaign";
+
+/** The Event at the other end of a Link; `outgoing` when the shown Event is the later one. */
+export interface EventLink {
   id: number;
   title: string;
   event_type: EventType;
@@ -40,8 +43,8 @@ export interface RelatedEvent {
   theater: string | null;
   confidence_score: number | null;
   created_at: string;
-  relation_type: string;
-  similarity_score: number | null;
+  link_type: LinkType;
+  direction: "outgoing" | "incoming";
 }
 
 export interface EventMapPoint {
