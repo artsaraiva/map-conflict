@@ -66,7 +66,7 @@ With the stack up (`docker compose up -d`), run the tests inside the backend con
 ```bash
 docker compose exec backend sh -c "pip install -q -r backend/requirements-dev.txt && python -m pytest backend/tests -q"
 ```
-Tests use their own database, `geopolitics_test`, on the same PostGIS server, so your data is never touched.
+The image bakes in the source, so run `docker compose up -d --build backend` after editing code or tests. Tests use their own database, `geopolitics_test`, on the same PostGIS server, so your data is never touched.
 
 ### 3. Start frontend
 ```bash

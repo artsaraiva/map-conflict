@@ -241,38 +241,46 @@ def _to_naive_utc(dt: datetime | None) -> datetime | None:
     return dt.astimezone(timezone.utc).replace(tzinfo=None)
 
 
+def _store_report(
+    session: AsyncSession, report: Report, summary: str | None, event_id: int | None = None
+) -> None:
+    """Add the Report's row; `event_id` is None when it belongs to no Event."""
+    session.add(Article(
+        url=report.url,
+        title=report.title,
+        source=report.source,
+        feed=report.feed,
+        summary=summary,
+        image_url=report.image_url,
+        video_url=report.video_url,
+        published_at=report.published_at,
+        event_id=event_id,
+    ))
+
+
 async def _ingest_one(
-    session: AsyncSession, scraped: Report, classify: Classify, geocode: Geocode
+    session: AsyncSession, report: Report, classify: Classify, geocode: Geocode
 ) -> Outcome:
     """Process one Report inside the caller's transaction; the caller commits."""
     # Normalize published_at to naive UTC
-    scraped.published_at = _to_naive_utc(scraped.published_at)
+    report.published_at = _to_naive_utc(report.published_at)
 
     # Skip if already processed
-    if await _article_exists(session, scraped.url):
+    if await _article_exists(session, report.url):
         return Outcome("already_seen")
 
     # Classify the article
-    analysis = await classify(scraped.title, scraped.description)
+    analysis = await classify(report.title, report.description)
     if analysis is None or not analysis.is_geopolitical:
         # Still store the article for dedup purposes, but don't create an event
-        session.add(Article(
-            url=scraped.url,
-            title=scraped.title,
-            source=scraped.source,
-            feed=scraped.feed,
-            summary=scraped.description[:500] if scraped.description else None,
-            image_url=scraped.image_url,
-            video_url=scraped.video_url,
-            published_at=scraped.published_at,
-        ))
+        _store_report(session, report, report.description[:500] if report.description else None)
         return Outcome("not_geopolitical")
 
     # Geocode the primary location
     # ponytail: unplaced Reports are not stored yet, so they are re-classified every run (#17)
     primary_location = analysis.locations[0] if analysis.locations else None
     if not primary_location:
-        logger.debug(f"No location found for: {scraped.title}")
+        logger.debug(f"No location found for: {report.title}")
         return Outcome("unplaced")
 
     geo = await geocode(primary_location)
@@ -292,22 +300,12 @@ async def _ingest_one(
         severity = SeverityLevel.MEDIUM
 
     # Check for existing similar event (fuzzy cross-channel deduplication)
-    article_text = scraped.description or scraped.title
+    article_text = report.description or report.title
     existing_event = await _find_similar_event(session, article_text, event_type.value)
 
     if existing_event:
         # Add article to existing event
-        session.add(Article(
-            url=scraped.url,
-            title=scraped.title,
-            source=scraped.source,
-            feed=scraped.feed,
-            summary=analysis.summary or scraped.description[:500],
-            image_url=scraped.image_url,
-            video_url=scraped.video_url,
-            published_at=scraped.published_at,
-            event_id=existing_event.id,
-        ))
+        _store_report(session, report, analysis.summary or report.description[:500], existing_event.id)
 
         # Update event severity if this article suggests higher severity
         severity_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
@@ -318,7 +316,7 @@ async def _ingest_one(
 
         # Refresh intelligence fields
         new_source_count = len(
-            {a.source for a in existing_event.articles if a.source} | {scraped.source}
+            {a.source for a in existing_event.articles if a.source} | {report.source}
         )
         existing_event.source_count = new_source_count
         existing_event.confidence_score = _compute_confidence(new_source_count)
@@ -328,8 +326,8 @@ async def _ingest_one(
 
     # Create new event
     event = Event(
-        title=scraped.title,
-        summary=analysis.summary or scraped.description[:500],
+        title=report.title,
+        summary=analysis.summary or report.description[:500],
         event_type=event_type,
         severity=severity,
         location_name=geo.name,
@@ -344,17 +342,7 @@ async def _ingest_one(
     await session.flush()  # Get the event ID
 
     # Create article linked to event
-    session.add(Article(
-        url=scraped.url,
-        title=scraped.title,
-        source=scraped.source,
-        feed=scraped.feed,
-        summary=analysis.summary or scraped.description[:500],
-        image_url=scraped.image_url,
-        video_url=scraped.video_url,
-        published_at=scraped.published_at,
-        event_id=event.id,
-    ))
+    _store_report(session, report, analysis.summary or report.description[:500], event.id)
 
     # Build semantic relationships with other recent events
     await _link_related_events(session, event, article_text)

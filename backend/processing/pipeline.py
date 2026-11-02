@@ -8,7 +8,7 @@ import logging
 from collections import Counter
 
 from backend.core.config import get_settings
-from backend.core.database import async_session, engine
+from backend.core.database import async_session
 from backend.processing.geocoder import geocode_location
 from backend.processing.intake import ingest
 from backend.processing.nlp import classify_article
@@ -38,11 +38,7 @@ async def run_feed(name: str) -> int:
     for report in reports:
         report.feed = name
         report.source = report.source or source_key(report.url)
-    try:
-        outcomes = await ingest(reports, classify_article, geocode_location, async_session)
-    finally:
-        # Each Celery task runs its own event loop; drop pooled connections bound to this one.
-        await engine.dispose()
+    outcomes = await ingest(reports, classify_article, geocode_location, async_session)
 
     counts = Counter(o.kind for o in outcomes)
     logger.info(f"{name}: Report outcomes: {dict(counts)}")
