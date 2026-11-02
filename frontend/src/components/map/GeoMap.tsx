@@ -34,7 +34,7 @@ interface GeoMapProps {
   onEventClick: (eventId: number) => void;
   selectedEventId: number | null;
   onBoundsChange?: (bounds: MapBounds) => void;
-  strategicHotspots?: GeoJSON.FeatureCollection;
+  strategicLocations?: GeoJSON.FeatureCollection;
 }
 
 // ─── Event point properties stored in Supercluster ───
@@ -199,7 +199,7 @@ export default function GeoMap({
   onEventClick,
   selectedEventId,
   onBoundsChange,
-  strategicHotspots,
+  strategicLocations,
 }: GeoMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -977,12 +977,12 @@ export default function GeoMap({
 
   // ─── Reactive strategic locations updates ───
   useEffect(() => {
-    if (!map.current || !strategicHotspots) return;
+    if (!map.current || !strategicLocations) return;
     const source = map.current.getSource(
       "strategic-locations"
     ) as maplibregl.GeoJSONSource | undefined;
-    source?.setData(strategicHotspots);
-  }, [strategicHotspots]);
+    source?.setData(strategicLocations);
+  }, [strategicLocations]);
 
   return (
     <div ref={mapContainer} className="absolute inset-0 h-full w-full" />

@@ -29,7 +29,9 @@ Services started:
 - redis
 - celery worker + beat
 
-The backend container auto-initializes the database schema and enables the PostGIS extension on startup.
+The backend container runs `alembic upgrade head` on startup, which enables PostGIS and builds or upgrades the schema. Databases made by the old `create_all` bootstrap upgrade in place.
+
+Postgres and Redis are published on `127.0.0.1` only.
 
 ## Quick Start
 
@@ -51,8 +53,8 @@ source backend/.venv/bin/activate
 pip install -r backend/requirements.txt
 python -m spacy download en_core_web_sm
 
-# Create the schema (same as the Docker backend does)
-python backend/scripts/init_db.py
+# Build or upgrade the schema (same as the Docker backend does)
+alembic -c backend/alembic.ini upgrade head
 
 # Start API server
 uvicorn backend.api.main:app --reload --port 8000
@@ -90,3 +92,7 @@ Copy `.env.example` to `.env` and fill in:
 - `OPENAI_API_KEY` - for article classification/summarization
 - `NEXT_PUBLIC_MAPTILER_API_KEY` - for map tiles (free tier at maptiler.com)
 - `NEXT_PUBLIC_CARTO_API_KEY` - map tiles when no MapTiler key is set (free key at carto.com/basemaps/apikey)
+- `PIPELINE_TRIGGER_SECRET` - optional. Turns on `POST /api/pipeline/trigger`, which runs Feeds on demand; send it in the `X-Pipeline-Secret` header. Left empty, the endpoint answers 403 and Feeds run only on the worker's schedule:
+  ```bash
+  curl -X POST -H "X-Pipeline-Secret: $PIPELINE_TRIGGER_SECRET" "http://localhost:8000/api/pipeline/trigger?feed=rss"
+  ```

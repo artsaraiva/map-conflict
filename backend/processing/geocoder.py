@@ -1,6 +1,6 @@
 """
 Geocoding service: resolves location names to coordinates.
-First checks curated hotspots, then falls back to Nominatim.
+First checks the curated Strategic Locations, then falls back to Nominatim.
 """
 
 import asyncio
@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
-HOTSPOTS_PATH = Path(__file__).parent.parent.parent / "data" / "hotspots.geojson"
+STRATEGIC_LOCATIONS_PATH = Path(__file__).parent.parent.parent / "data" / "strategic_locations.geojson"
 
 # Regex to detect strings that are mostly non-Latin (emoji flags, CJK, etc.)
 _NON_GEOCODABLE = re.compile(r"^[\W\d_]+$", re.UNICODE)
@@ -28,8 +28,8 @@ class GeocodedLocation:
     display_name: str = ""
 
 
-# In-memory cache for hotspots
-_hotspots_cache: dict[str, GeocodedLocation] = {}
+# In-memory cache for Strategic Locations, keyed by lowercase name and alias
+_strategic_locations_cache: dict[str, GeocodedLocation] = {}
 
 # In-memory cache for Nominatim results (avoids re-querying same location)
 _nominatim_cache: dict[str, Optional[GeocodedLocation]] = {}
@@ -38,14 +38,14 @@ _nominatim_cache: dict[str, Optional[GeocodedLocation]] = {}
 _nominatim_lock = asyncio.Lock()
 
 
-def _load_hotspots() -> dict[str, GeocodedLocation]:
-    """Load curated geopolitical hotspots from GeoJSON."""
-    global _hotspots_cache
-    if _hotspots_cache:
-        return _hotspots_cache
+def _load_strategic_locations() -> dict[str, GeocodedLocation]:
+    """Load the curated Strategic Locations from GeoJSON."""
+    global _strategic_locations_cache
+    if _strategic_locations_cache:
+        return _strategic_locations_cache
 
     try:
-        with open(HOTSPOTS_PATH) as f:
+        with open(STRATEGIC_LOCATIONS_PATH) as f:
             data = json.load(f)
 
         for feature in data.get("features", []):
@@ -63,20 +63,20 @@ def _load_hotspots() -> dict[str, GeocodedLocation]:
             if name and lat and lng:
                 aliases = [name] + [a.lower() for a in props.get("aliases", [])]
                 for alias in aliases:
-                    _hotspots_cache[alias] = GeocodedLocation(
+                    _strategic_locations_cache[alias] = GeocodedLocation(
                         name=props.get("name", name),
                         latitude=lat,
                         longitude=lng,
                         display_name=props.get("display_name", name),
                     )
 
-        logger.info(f"Loaded {len(_hotspots_cache)} hotspot entries")
+        logger.info(f"Loaded {len(_strategic_locations_cache)} Strategic Location entries")
     except FileNotFoundError:
-        logger.warning("Hotspots GeoJSON not found, using Nominatim only")
+        logger.warning("Strategic Locations GeoJSON not found, using Nominatim only")
     except Exception as e:
-        logger.error(f"Error loading hotspots: {e}")
+        logger.error(f"Error loading Strategic Locations: {e}")
 
-    return _hotspots_cache
+    return _strategic_locations_cache
 
 
 async def geocode_nominatim(location: str) -> Optional[GeocodedLocation]:
@@ -131,7 +131,7 @@ async def geocode_nominatim(location: str) -> Optional[GeocodedLocation]:
 
 async def geocode_location(location: str) -> Optional[GeocodedLocation]:
     """
-    Geocode a location name. Checks curated hotspots first,
+    Geocode a location name. Checks the curated Strategic Locations first,
     then falls back to Nominatim.
     """
     # Skip junk locations (emoji flags, punctuation-only strings, single chars)
@@ -140,18 +140,18 @@ async def geocode_location(location: str) -> Optional[GeocodedLocation]:
         logger.debug(f"Skipping non-geocodable location: '{location}'")
         return None
 
-    # Check curated hotspots first
-    hotspots = _load_hotspots()
+    # Check the curated Strategic Locations first
+    locations = _load_strategic_locations()
     key = stripped.lower()
 
-    if key in hotspots:
-        logger.debug(f"Hotspot hit for '{location}'")
-        return hotspots[key]
+    if key in locations:
+        logger.debug(f"Strategic Location hit for '{location}'")
+        return locations[key]
 
     # Check partial matches (e.g., "strait of hormuz" in "the strait of hormuz area")
-    for hotspot_key, geo in hotspots.items():
-        if hotspot_key in key or key in hotspot_key:
-            logger.debug(f"Partial hotspot match: '{location}' -> '{hotspot_key}'")
+    for location_key, geo in locations.items():
+        if location_key in key or key in location_key:
+            logger.debug(f"Partial Strategic Location match: '{location}' -> '{location_key}'")
             return geo
 
     # Fall back to Nominatim

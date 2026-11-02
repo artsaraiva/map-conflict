@@ -58,9 +58,9 @@ export async function fetchMapPoints(
   return data.map(resolveMapPoint);
 }
 
-export async function fetchStrategicHotspots(): Promise<GeoJSON.FeatureCollection> {
-  const res = await fetch(`${API_URL}/api/hotspots`);
-  if (!res.ok) throw new Error("Failed to fetch strategic hotspots");
+export async function fetchStrategicLocations(): Promise<GeoJSON.FeatureCollection> {
+  const res = await fetch(`${API_URL}/api/strategic-locations`);
+  if (!res.ok) throw new Error("Failed to fetch Strategic Locations");
   return res.json();
 }
 
@@ -80,13 +80,5 @@ export async function fetchEvent(eventId: number): Promise<GeoEvent> {
 export async function fetchEventLinks(eventId: number): Promise<EventLink[]> {
   const res = await fetch(`${API_URL}/api/events/${eventId}/links`);
   if (!res.ok) return [];
-  return res.json();
-}
-
-export async function triggerPipeline(): Promise<{ status: string }> {
-  const res = await fetch(`${API_URL}/api/pipeline/trigger`, {
-    method: "POST",
-  });
-  if (!res.ok) throw new Error("Failed to trigger pipeline");
   return res.json();
 }

@@ -17,7 +17,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("articles", sa.Column("feed", sa.String(20), nullable=True))
+    op.add_column("articles", sa.Column("feed", sa.String(20), nullable=True), if_not_exists=True)
 
 
 def downgrade() -> None:

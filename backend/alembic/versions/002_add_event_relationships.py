@@ -24,9 +24,10 @@ def upgrade() -> None:
         sa.Column("similarity_score", sa.Float(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.UniqueConstraint("source_event_id", "target_event_id", name="uq_event_relationship"),
+        if_not_exists=True,
     )
-    op.create_index("idx_rel_source", "event_relationships", ["source_event_id"])
-    op.create_index("idx_rel_target", "event_relationships", ["target_event_id"])
+    op.create_index("idx_rel_source", "event_relationships", ["source_event_id"], if_not_exists=True)
+    op.create_index("idx_rel_target", "event_relationships", ["target_event_id"], if_not_exists=True)
 
 
 def downgrade() -> None:
