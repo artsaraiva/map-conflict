@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Optional
 import logging
 
-from backend.scraping.report import Report
+from backend.processing.intake import Report
 from backend.scraping.sources import source_key
 
 logger = logging.getLogger(__name__)

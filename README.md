@@ -61,6 +61,13 @@ uvicorn api.main:app --reload --port 8000
 celery -A tasks.worker worker --loglevel=info --beat
 ```
 
+### Run the backend tests
+With the stack up (`docker compose up -d`), run the tests inside the backend container:
+```bash
+docker compose exec backend sh -c "pip install -q -r backend/requirements-dev.txt && python -m pytest backend/tests -q"
+```
+Tests use their own database, `geopolitics_test`, on the same PostGIS server, so your data is never touched.
+
 ### 3. Start frontend
 ```bash
 cd frontend

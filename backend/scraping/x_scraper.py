@@ -10,7 +10,7 @@ Returns Reports like every other Feed adapter.
 import logging
 import os
 
-from backend.scraping.report import Report
+from backend.processing.intake import Report
 
 logger = logging.getLogger(__name__)
 
