@@ -34,10 +34,9 @@ jobs:
       - run: pip install -r backend/requirements.txt -r backend/requirements-dev.txt
       - name: Tests
         run: python -m pytest backend/tests -q
-      # Same schema bootstrap docker-compose runs; catches model/DDL errors on PostGIS.
-      # ponytail: create_all only proves fresh installs; Alembic upgrades from an old schema stay untested until compose runs `alembic upgrade head`
-      - name: Schema builds on PostGIS
-        run: python backend/scripts/init_db.py
+      # Same migrations docker-compose runs, from an empty PostGIS database.
+      - name: Migrations build the schema from empty
+        run: alembic -c backend/alembic.ini upgrade head
 
   frontend:
     runs-on: ubuntu-latest

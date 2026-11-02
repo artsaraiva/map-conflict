@@ -18,7 +18,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.drop_table("event_relationships")
+    op.drop_table("event_relationships", if_exists=True)
     op.create_table(
         "event_links",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
@@ -27,9 +27,10 @@ def upgrade() -> None:
         sa.Column("link_type", sa.String(20), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.UniqueConstraint("from_event_id", "to_event_id", name="uq_event_link"),
+        if_not_exists=True,
     )
-    op.create_index("idx_link_from", "event_links", ["from_event_id"])
-    op.create_index("idx_link_to", "event_links", ["to_event_id"])
+    op.create_index("idx_link_from", "event_links", ["from_event_id"], if_not_exists=True)
+    op.create_index("idx_link_to", "event_links", ["to_event_id"], if_not_exists=True)
 
 
 def downgrade() -> None:

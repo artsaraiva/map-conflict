@@ -29,7 +29,9 @@ Services started:
 - redis
 - celery worker + beat
 
-The backend container auto-initializes the database schema and enables the PostGIS extension on startup.
+The backend container runs `alembic upgrade head` on startup, which enables PostGIS and builds or upgrades the schema. Databases made by the old `create_all` bootstrap upgrade in place.
+
+Postgres and Redis are published on `127.0.0.1` only.
 
 ## Quick Start
 
@@ -44,21 +46,21 @@ docker compose up -d
 ```
 
 ### 2. Start backend
+Run these from the repository root:
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python -m venv backend/.venv
+source backend/.venv/bin/activate
+pip install -r backend/requirements.txt
 python -m spacy download en_core_web_sm
 
 # Run migrations
-alembic upgrade head
+alembic -c backend/alembic.ini upgrade head
 
 # Start API server
-uvicorn api.main:app --reload --port 8000
+uvicorn backend.api.main:app --reload --port 8000
 
 # In another terminal - start Celery worker
-celery -A tasks.worker worker --loglevel=info --beat
+celery -A backend.tasks.worker worker --loglevel=info --beat
 ```
 
 ### Run the backend tests
