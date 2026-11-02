@@ -39,6 +39,14 @@ app.conf.update(
 @app.task(name="backend.tasks.worker.ingest_feed")
 def ingest_feed(name: str):
     """Fetch one Feed and process its Reports."""
+    from backend.core.database import engine
     from backend.processing.pipeline import run_feed
 
-    return {"events_processed": asyncio.run(run_feed(name))}
+    async def run():
+        try:
+            return await run_feed(name)
+        finally:
+            # Each task runs its own event loop; drop pooled connections bound to this one.
+            await engine.dispose()
+
+    return {"events_processed": asyncio.run(run())}

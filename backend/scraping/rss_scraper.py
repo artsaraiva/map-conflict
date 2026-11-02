@@ -11,7 +11,7 @@ from dateutil import parser as dateparser
 from typing import Optional
 import logging
 
-from backend.scraping.report import Report
+from backend.processing.intake import Report
 
 logger = logging.getLogger(__name__)
 
