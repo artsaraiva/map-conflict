@@ -68,6 +68,13 @@ docker compose exec backend sh -c "pip install -q -r backend/requirements-dev.tx
 ```
 The image bakes in the source, so run `docker compose up -d --build backend` after editing code or tests. Tests use their own database, `geopolitics_test`, on the same PostGIS server, so your data is never touched.
 
+### Reassign Theaters
+Theaters are the named areas in `data/theaters.geojson`. Intake gives each new Event the Theater that holds it. Stored Events keep theirs until you reassign them, so run this once after pulling the named-Theater change, and again after any edit to `data/theaters.geojson`:
+```bash
+docker compose exec backend python backend/scripts/reassign_theaters.py
+```
+Running it twice changes nothing. Rebuild the backend image first (`docker compose up -d --build backend`) so it sees the edited file.
+
 ### 3. Start frontend
 ```bash
 cd frontend
