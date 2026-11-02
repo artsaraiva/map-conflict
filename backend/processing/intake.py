@@ -28,6 +28,7 @@ from backend.models.event import (
 )
 from backend.processing.geocoder import GeocodedLocation
 from backend.processing.nlp import ArticleAnalysis, text_similarity
+from backend.processing.theaters import theater_for
 from backend.scraping.sources import source_key
 
 logger = logging.getLogger(__name__)
@@ -83,31 +84,6 @@ async def ingest(
             logger.error(f"Error processing Report '{report.title}': {e}")
             outcomes.append(Outcome("failed", error=e))
     return outcomes
-
-
-# ── Theater bounding boxes (checked in order; first match wins) ───────────────
-# Each entry: (name, lat_min, lat_max, lng_min, lng_max)
-_THEATER_REGIONS = [
-    ("Eastern Europe", 44.0, 71.0, 14.0, 50.0),
-    ("Middle East", 12.0, 42.0, 25.0, 63.0),
-    ("East Asia", 10.0, 55.0, 100.0, 145.0),
-    ("South Asia", 5.0, 38.0, 60.0, 100.0),
-    ("Central Asia", 35.0, 57.0, 50.0, 90.0),
-    ("North Africa", 15.0, 38.0, -18.0, 42.0),
-    ("Sub-Saharan Africa", -35.0, 15.0, -20.0, 52.0),
-    ("Americas", -60.0, 72.0, -170.0, -30.0),
-    ("Western Europe", 35.0, 72.0, -10.0, 30.0),
-    ("Southeast Asia", -10.0, 28.0, 95.0, 141.0),
-    ("Pacific", -50.0, 50.0, 141.0, 180.0),
-]
-
-
-def _derive_theater(lat: float, lng: float) -> str:
-    """Assign a geopolitical theater label from a coordinate pair."""
-    for name, lat_min, lat_max, lng_min, lng_max in _THEATER_REGIONS:
-        if lat_min <= lat <= lat_max and lng_min <= lng <= lng_max:
-            return name
-    return "Other"
 
 
 async def _refresh_corroboration(session: AsyncSession, event: Event) -> None:
@@ -354,7 +330,7 @@ async def _ingest_one(
         latitude=geo.latitude,
         longitude=geo.longitude,
         countries=",".join(analysis.countries) if analysis.countries else None,
-        theater=_derive_theater(geo.latitude, geo.longitude),
+        theater=theater_for(geo.latitude, geo.longitude),
     )
     session.add(event)
     await session.flush()  # Get the event ID

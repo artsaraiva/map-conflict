@@ -12,7 +12,6 @@ import {
   TIME_RANGE_OPTIONS,
   ALL_EVENT_TYPES,
   ALL_SEVERITIES,
-  KNOWN_THEATERS,
   severityRank,
 } from "@/lib/types";
 import { formatTimeAgo, isTelegramChannel, getSourceLabel } from "@/lib/utils";
@@ -46,6 +45,7 @@ interface EventListProps {
   onToggle: () => void;
   filters: MapFilters;
   onFiltersChange: (filters: MapFilters) => void;
+  theaters: string[];
 }
 
 function hasActiveFilters(filters: MapFilters): boolean {
@@ -69,6 +69,7 @@ export default function EventList({
   onToggle,
   filters,
   onFiltersChange,
+  theaters,
 }: EventListProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -286,7 +287,7 @@ export default function EventList({
                 Theater
               </div>
               <div className="flex flex-wrap gap-1">
-                {KNOWN_THEATERS.map((theater) => {
+                {theaters.map((theater) => {
                   const isActive = (filters.theaters ?? []).includes(theater);
                   return (
                     <button

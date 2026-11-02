@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { fetchMapPoints, fetchEvent, triggerPipeline, fetchStrategicHotspots } from "@/lib/api";
+import { fetchMapPoints, fetchEvent, triggerPipeline, fetchStrategicHotspots, fetchTheaters } from "@/lib/api";
 import { GeoEvent, MapFilters, MapBounds, DEFAULT_FILTERS } from "@/lib/types";
 import { timeRange, visibleEvents } from "@/lib/map-view";
 import EventPanel from "@/components/panels/EventPanel";
@@ -55,6 +55,13 @@ export default function Home() {
   const { data: strategicHotspots } = useQuery({
     queryKey: ["strategic-hotspots"],
     queryFn: fetchStrategicHotspots,
+    staleTime: Infinity,
+  });
+
+  // Fetch the Theater names once, for the Theater filter
+  const { data: theaters = [] } = useQuery({
+    queryKey: ["theaters"],
+    queryFn: fetchTheaters,
     staleTime: Infinity,
   });
 
@@ -141,6 +148,7 @@ export default function Home() {
           onToggle={() => setIsListOpen(!isListOpen)}
           filters={filters}
           onFiltersChange={setFilters}
+          theaters={theaters}
         />
       </div>
 

@@ -64,6 +64,12 @@ export async function fetchStrategicHotspots(): Promise<GeoJSON.FeatureCollectio
   return res.json();
 }
 
+export async function fetchTheaters(): Promise<string[]> {
+  const res = await fetch(`${API_URL}/api/theaters`);
+  if (!res.ok) throw new Error("Failed to fetch theaters");
+  return res.json();
+}
+
 export async function fetchEvent(eventId: number): Promise<GeoEvent> {
   const res = await fetch(`${API_URL}/api/events/${eventId}`);
   if (!res.ok) throw new Error("Failed to fetch event");
