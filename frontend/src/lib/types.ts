@@ -242,20 +242,6 @@ export const DEFAULT_FILTERS: MapFilters = {
   theaters: [],     // empty = show all
 };
 
-export const KNOWN_THEATERS: string[] = [
-  "Eastern Europe",
-  "Middle East",
-  "East Asia",
-  "South Asia",
-  "Central Asia",
-  "North Africa",
-  "Sub-Saharan Africa",
-  "Americas",
-  "Western Europe",
-  "Southeast Asia",
-  "Pacific",
-];
-
 export const TIME_RANGE_OPTIONS: { label: string; value: number }[] = [
   { label: "6h", value: 6 },
   { label: "12h", value: 12 },
