@@ -126,7 +126,8 @@ async def relate_events(event: Event, candidates: list[Event]) -> dict[int, str 
     if not settings.openai_api_key:
         return {}
 
-    client = AsyncOpenAI(api_key=settings.openai_api_key)
+    # Bounded, so a slow model delays Link proposal for one Event, not the Feed's Reports
+    client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=30, max_retries=1)
     listed = "\n".join(f"- id {c.id}: {_describe_event(c)}" for c in candidates)
 
     prompt = f"""A new geopolitical event was reported. Decide, for each earlier event, whether the new event is linked to it.

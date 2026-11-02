@@ -32,17 +32,18 @@ async def propose_links(session: AsyncSession, event: Event, relate: Relate) -> 
         return
     answers = await relate(event, candidates)
     for candidate in candidates:
-        if answers.get(candidate.id) in LINK_TYPES:
-            session.add(Link(from_event_id=event.id, to_event_id=candidate.id,
-                             link_type=answers[candidate.id]))
+        link_type = answers.get(candidate.id)
+        if isinstance(link_type, str) and link_type in LINK_TYPES:  # a model may answer with any JSON value
+            session.add(Link(from_event_id=event.id, to_event_id=candidate.id, link_type=link_type))
 
 
 async def _candidates(session: AsyncSession, event: Event) -> list[Event]:
     """Events created in the window before `event` and within the radius of it, most word overlap first."""
+    # Strictly earlier, so two Events stored at the same instant cannot link both ways
     earlier = await session.scalars(
         select(Event)
-        .where(Event.id != event.id)
-        .where(Event.created_at.between(event.created_at - CANDIDATE_WINDOW, event.created_at))
+        .where(Event.created_at >= event.created_at - CANDIDATE_WINDOW)
+        .where(Event.created_at < event.created_at)
     )
     # shortcut: distance is checked in Python over every Event in the window; move it into SQL if that gets slow
     nearby = [

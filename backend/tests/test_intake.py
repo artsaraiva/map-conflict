@@ -382,3 +382,14 @@ async def test_new_event_is_committed_before_relate_runs(session, session_factor
                  session_factory)
 
     assert seen == [True]
+
+
+async def test_answer_that_is_not_a_string_is_ignored_and_other_links_are_stored(session, session_factory):
+    await add_event(session, "interception")
+    earlier = await add_event(session, "drone strike")
+    relate = FakeRelate(interception=["response_to"], **{"drone strike": "response_to"})
+
+    [outcome] = await ingest([report("strike")], FakeClassifier(strike=geopolitical()), geocode, relate,
+                             session_factory)
+
+    assert await stored_links(session_factory) == [(outcome.event.id, earlier.id, "response_to")]

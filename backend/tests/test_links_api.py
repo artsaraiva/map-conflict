@@ -69,3 +69,18 @@ async def test_links_read_outgoing_from_the_later_event_and_incoming_on_the_earl
         "link_type": "response_to",
         "direction": "outgoing",
     }]
+
+
+async def test_links_to_events_created_at_the_same_time_list_the_later_stored_first(session, client):
+    strike = await add_event(session, "Houthi missile strike on a tanker", hours_ago=10)
+    first = await add_event(session, "US destroyer intercepts Houthi missiles", hours_ago=8)
+    second = await add_event(session, "UK frigate intercepts Houthi drones", hours_ago=8)
+    session.add_all([
+        Link(from_event_id=first.id, to_event_id=strike.id, link_type="response_to"),
+        Link(from_event_id=second.id, to_event_id=strike.id, link_type="response_to"),
+    ])
+    await session.commit()
+
+    on_strike = (await client.get(f"/api/events/{strike.id}/links")).json()
+
+    assert [e["id"] for e in on_strike] == [second.id, first.id]

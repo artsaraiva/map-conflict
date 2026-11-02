@@ -128,7 +128,7 @@ async def get_event_links(event_id: int, db: AsyncSession = Depends(get_db)):
         select(Link, Event)
         .join(Event, Event.id == other_id)
         .where(or_(Link.from_event_id == event_id, Link.to_event_id == event_id))
-        .order_by(Event.created_at.desc())
+        .order_by(Event.created_at.desc(), Event.id.desc())
     )
 
     return [
