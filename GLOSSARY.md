@@ -23,7 +23,7 @@ A single occurrence at one place and time, such as one strike, one interception,
 _Avoid_: Incident, development, story
 
 **Link**:
-A typed relationship between two distinct Events, such as response to, escalation of, or same campaign. Similar wording alone is not a Link, only a hint that one may exist.
+A typed relationship between two distinct Events, of one of three types: response to, escalation of, or same campaign. A response or escalation points from the later Event to the earlier one; same campaign has no direction. Two Events have at most one Link. Similar wording alone is not a Link, only a hint that one may exist.
 _Avoid_: Relationship, similarity, related event
 
 **Chain**:
