@@ -15,7 +15,7 @@ cp .env.example .env
 
 Fill in:
 - `OPENAI_API_KEY` - for article classification/summarization
-- `NEXT_PUBLIC_MAPTILER_API_KEY` - for map tiles
+- `NEXT_PUBLIC_MAPTILER_API_KEY` or `NEXT_PUBLIC_CARTO_API_KEY` - for map tiles (optional; without either, OpenFreeMap is used)
 
 ### 2. Start the full stack
 ```bash
@@ -23,7 +23,7 @@ docker compose up --build
 ```
 
 Services started:
-- frontend: `http://localhost:3000`
+- frontend: `http://localhost:3001`
 - backend API: `http://localhost:8000`
 - postgres with PostGIS
 - redis
@@ -40,25 +40,25 @@ The backend container auto-initializes the database schema and enables the PostG
 
 ### 1. Start infrastructure
 ```bash
-docker compose up -d
+docker compose up -d postgres redis
 ```
 
 ### 2. Start backend
+Run from the repo root; imports start with `backend.`.
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python -m venv backend/.venv
+source backend/.venv/bin/activate
+pip install -r backend/requirements.txt
 python -m spacy download en_core_web_sm
 
-# Run migrations
-alembic upgrade head
+# Create the schema (same as the Docker backend does)
+python backend/scripts/init_db.py
 
 # Start API server
-uvicorn api.main:app --reload --port 8000
+uvicorn backend.api.main:app --reload --port 8000
 
 # In another terminal - start Celery worker
-celery -A tasks.worker worker --loglevel=info --beat
+celery -A backend.tasks.worker worker --loglevel=info --beat
 ```
 
 ### Run the backend tests
@@ -82,10 +82,11 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000
+Open http://localhost:3001
 
 ## Environment Variables
 
 Copy `.env.example` to `.env` and fill in:
 - `OPENAI_API_KEY` - for article classification/summarization
 - `NEXT_PUBLIC_MAPTILER_API_KEY` - for map tiles (free tier at maptiler.com)
+- `NEXT_PUBLIC_CARTO_API_KEY` - map tiles when no MapTiler key is set (free key at carto.com/basemaps/apikey)

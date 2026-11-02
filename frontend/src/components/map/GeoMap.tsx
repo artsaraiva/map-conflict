@@ -295,35 +295,27 @@ export default function GeoMap({
     let animationFrame: number | null = null;
 
     const mapTilerKey = process.env.NEXT_PUBLIC_MAPTILER_API_KEY;
+    const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY;
 
     const mapStyle = mapTilerKey
       ? `https://api.maptiler.com/maps/backdrop/style.json?key=${mapTilerKey}`
-      : {
-          version: 8 as const,
-          name: "Operations Grid",
-          sources: {
-            "osm-tiles": {
-              type: "raster" as const,
-              tiles: [
-                "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-                "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-                "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-              ],
-              tileSize: 256,
-              attribution:
-                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      : cartoKey
+        ? {
+            version: 8 as const,
+            name: "Operations Grid",
+            sources: {
+              "carto-dark": {
+                type: "raster" as const,
+                tiles: [`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png?key=${cartoKey}`],
+                tileSize: 256,
+                attribution:
+                  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+              },
             },
-          },
-          layers: [
-            {
-              id: "osm-tiles-layer",
-              type: "raster" as const,
-              source: "osm-tiles",
-              minzoom: 0,
-              maxzoom: 19,
-            },
-          ],
-        };
+            layers: [{ id: "carto-dark-layer", type: "raster" as const, source: "carto-dark" }],
+          }
+        : // no key: OpenFreeMap needs none
+          "https://tiles.openfreemap.org/styles/dark";
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
