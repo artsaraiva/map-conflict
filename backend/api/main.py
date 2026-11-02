@@ -1,8 +1,9 @@
 import os
 import json
 from pathlib import Path
+from typing import Optional
 
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
@@ -55,27 +56,14 @@ async def health():
 
 
 @app.post("/api/pipeline/trigger")
-async def trigger_pipeline(background_tasks: BackgroundTasks):
-    """Manually trigger the full multi-source pipeline (Telegram + RSS)."""
-    from backend.processing.pipeline import run_all_sources_pipeline
+async def trigger_pipeline(background_tasks: BackgroundTasks, feed: Optional[str] = None):
+    """Run one Feed (`?feed=telegram|rss|x|gdelt`) or, with no `feed`, all of them."""
+    from backend.processing.pipeline import FEEDS, run_all_feeds, run_feed
 
-    background_tasks.add_task(run_all_sources_pipeline)
-    return {"status": "pipeline triggered (all sources)"}
-
-
-@app.post("/api/pipeline/trigger-telegram")
-async def trigger_telegram_pipeline(background_tasks: BackgroundTasks):
-    """Manually trigger only the Telegram scraping pipeline."""
-    from backend.processing.pipeline import run_telegram_pipeline
-
-    background_tasks.add_task(run_telegram_pipeline)
-    return {"status": "pipeline triggered (telegram)"}
-
-
-@app.post("/api/pipeline/trigger-rss")
-async def trigger_rss_pipeline(background_tasks: BackgroundTasks):
-    """Manually trigger only the RSS scraping pipeline."""
-    from backend.processing.pipeline import run_rss_pipeline
-
-    background_tasks.add_task(run_rss_pipeline)
-    return {"status": "pipeline triggered (rss)"}
+    if feed is None:
+        background_tasks.add_task(run_all_feeds)
+    elif feed in FEEDS:
+        background_tasks.add_task(run_feed, feed)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown feed {feed!r}; expected one of {list(FEEDS)}")
+    return {"status": f"pipeline triggered ({feed or 'all feeds'})"}

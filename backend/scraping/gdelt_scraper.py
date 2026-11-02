@@ -14,7 +14,8 @@ from datetime import datetime, timezone
 from typing import Optional
 import logging
 
-from backend.scraping.rss_scraper import ScrapedArticle
+from backend.scraping.report import Report
+from backend.scraping.sources import source_key
 
 logger = logging.getLogger(__name__)
 
@@ -25,42 +26,34 @@ GDELT_DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
 GDELT_QUERIES = [
     {
         "query": "airstrike military attack offensive conflict war",
-        "source": "gdelt",
         "max": 50,
     },
     {
         "query": "protest demonstration civil unrest riot",
-        "source": "gdelt",
         "max": 30,
     },
     {
         "query": "sanctions diplomacy ceasefire peace agreement treaty",
-        "source": "gdelt",
         "max": 30,
     },
     {
         "query": "Ukraine Russia front line offensive Kharkiv Zaporizhzhia",
-        "source": "gdelt",
         "max": 50,
     },
     {
         "query": "Gaza Hamas IDF Palestine Rafah ceasefire",
-        "source": "gdelt",
         "max": 40,
     },
     {
         "query": "Taiwan China military naval strait exercise",
-        "source": "gdelt",
         "max": 30,
     },
     {
         "query": "Red Sea Houthi shipping tanker attack",
-        "source": "gdelt",
         "max": 30,
     },
     {
         "query": "nuclear missile ballistic test North Korea Iran",
-        "source": "gdelt",
         "max": 20,
     },
 ]
@@ -80,7 +73,7 @@ def _parse_gdelt_date(seendate: str) -> Optional[datetime]:
 
 async def _scrape_gdelt_query(
     query_config: dict, client: httpx.AsyncClient
-) -> list[ScrapedArticle]:
+) -> list[Report]:
     """Fetch articles from GDELT Doc API for a single query term."""
     params = {
         "query": query_config["query"],
@@ -100,7 +93,7 @@ async def _scrape_gdelt_query(
         )
         return []
 
-    articles: list[ScrapedArticle] = []
+    reports: list[Report] = []
     for raw in articles_raw:
         url = (raw.get("url") or "").strip()
         title = (raw.get("title") or "").strip()
@@ -109,23 +102,24 @@ async def _scrape_gdelt_query(
         # Only English-language articles for NLP compatibility
         if (raw.get("language") or "English") != "English":
             continue
-        articles.append(
-            ScrapedArticle(
+        reports.append(
+            Report(
                 url=url,
                 title=title,
-                source=query_config["source"],
                 # GDELT artlist mode doesn't include article body excerpts —
                 # use the title as the description so the NLP pipeline has
                 # something to work with.
                 description=title,
                 published_at=_parse_gdelt_date(raw.get("seendate") or ""),
+                image_url=(raw.get("socialimage") or "").strip() or None,
+                source=source_key(raw.get("domain") or url),
             )
         )
 
-    return articles
+    return reports
 
 
-async def scrape_gdelt() -> list[ScrapedArticle]:
+async def scrape_gdelt() -> list[Report]:
     """
     Scrape all GDELT queries concurrently and return deduplicated articles.
 
@@ -138,20 +132,20 @@ async def scrape_gdelt() -> list[ScrapedArticle]:
         )
 
     seen_urls: set[str] = set()
-    articles: list[ScrapedArticle] = []
+    reports: list[Report] = []
 
     for batch in batches:
         if isinstance(batch, BaseException):
             logger.warning("GDELT batch error: %s", batch)
             continue
-        for article in batch:
-            if article.url not in seen_urls:
-                seen_urls.add(article.url)
-                articles.append(article)
+        for report in batch:
+            if report.url not in seen_urls:
+                seen_urls.add(report.url)
+                reports.append(report)
 
     logger.info(
         "GDELT: scraped %d unique articles across %d queries",
-        len(articles),
+        len(reports),
         len(GDELT_QUERIES),
     )
-    return articles
+    return reports

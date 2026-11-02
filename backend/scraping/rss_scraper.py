@@ -6,11 +6,12 @@ import asyncio
 import re
 import feedparser
 import httpx
-from dataclasses import dataclass, field
 from datetime import datetime
 from dateutil import parser as dateparser
 from typing import Optional
 import logging
+
+from backend.scraping.report import Report
 
 logger = logging.getLogger(__name__)
 
@@ -19,56 +20,36 @@ RSS_FEEDS = [
     {
         "name": "BBC World",
         "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
-        "source": "bbc",
     },
     {
         "name": "Al Jazeera",
         "url": "https://www.aljazeera.com/xml/rss/all.xml",
-        "source": "aljazeera",
     },
     {
         "name": "AP News",
         "url": "https://feedx.net/rss/ap.xml",
-        "source": "ap",
     },
     {
         "name": "CNN World",
         "url": "http://rss.cnn.com/rss/edition_world.rss",
-        "source": "cnn",
     },
     {
         "name": "The Guardian World",
         "url": "https://www.theguardian.com/world/rss",
-        "source": "guardian",
     },
     {
         "name": "NPR World",
         "url": "https://feeds.npr.org/1004/rss.xml",
-        "source": "npr",
     },
     {
         "name": "France24",
         "url": "https://www.france24.com/en/rss",
-        "source": "france24",
     },
     {
         "name": "DW World",
         "url": "https://rss.dw.com/rdf/rss-en-world",
-        "source": "dw",
     },
 ]
-
-
-@dataclass
-class ScrapedArticle:
-    url: str
-    title: str
-    source: str
-    description: str = ""
-    published_at: Optional[datetime] = None
-    content: str = ""
-    image_url: Optional[str] = None
-    video_url: Optional[str] = None
 
 
 def parse_date(date_str: str) -> Optional[datetime]:
@@ -83,9 +64,9 @@ def parse_date(date_str: str) -> Optional[datetime]:
 
 async def scrape_rss_feed(
     feed_config: dict, max_articles: int = 20
-) -> list[ScrapedArticle]:
+) -> list[Report]:
     """Scrape a single RSS feed and return articles."""
-    articles = []
+    reports = []
     try:
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             response = await client.get(feed_config["url"])
@@ -148,11 +129,10 @@ async def scrape_rss_feed(
                         if not rss_image:
                             rss_image = enc_url
 
-            articles.append(
-                ScrapedArticle(
+            reports.append(
+                Report(
                     url=url,
                     title=title,
-                    source=feed_config["source"],
                     description=description,
                     published_at=published,
                     image_url=rss_image,
@@ -160,12 +140,12 @@ async def scrape_rss_feed(
                 )
             )
 
-        logger.info(f"Scraped {len(articles)} articles from {feed_config['name']}")
+        logger.info(f"Scraped {len(reports)} articles from {feed_config['name']}")
 
     except Exception as e:
         logger.error(f"Error scraping {feed_config['name']}: {e}")
 
-    return articles
+    return reports
 
 
 async def fetch_og_media(url: str) -> tuple[Optional[str], Optional[str]]:
@@ -228,7 +208,7 @@ async def fetch_og_media(url: str) -> tuple[Optional[str], Optional[str]]:
     return image_url, video_url
 
 
-async def scrape_all_feeds(max_articles_per_feed: int = 20) -> list[ScrapedArticle]:
+async def scrape_all_feeds(max_articles_per_feed: int = 20) -> list[Report]:
     """Scrape all configured RSS feeds concurrently."""
     # Scrape all feeds in parallel — each feed handles its own errors
     feed_results = await asyncio.gather(
@@ -236,35 +216,35 @@ async def scrape_all_feeds(max_articles_per_feed: int = 20) -> list[ScrapedArtic
         return_exceptions=True,
     )
 
-    all_articles = []
+    all_reports = []
     for i, result in enumerate(feed_results):
         if isinstance(result, BaseException):
             logger.error(f"Feed {RSS_FEEDS[i]['name']} raised: {result}")
         elif isinstance(result, list):
-            all_articles.extend(result)
+            all_reports.extend(result)
 
     # Fetch og:image and og:video for all articles (with concurrency limit)
     # Only fetch for articles that don't already have media from RSS elements
-    logger.info(f"Total articles scraped: {len(all_articles)}. Fetching og:media...")
+    logger.info(f"Total articles scraped: {len(all_reports)}. Fetching og:media...")
 
     sem = asyncio.Semaphore(5)  # max 5 concurrent og:media fetches
 
-    async def fetch_media_for(article: ScrapedArticle) -> None:
+    async def fetch_media_for(report: Report) -> None:
         async with sem:
-            og_image, og_video = await fetch_og_media(article.url)
+            og_image, og_video = await fetch_og_media(report.url)
             # RSS-extracted media takes priority; og:meta is fallback
-            if not article.image_url and og_image:
-                article.image_url = og_image
-            if not article.video_url and og_video:
-                article.video_url = og_video
+            if not report.image_url and og_image:
+                report.image_url = og_image
+            if not report.video_url and og_video:
+                report.video_url = og_video
 
-    await asyncio.gather(*[fetch_media_for(a) for a in all_articles])
+    await asyncio.gather(*[fetch_media_for(a) for a in all_reports])
 
-    images_found = sum(1 for a in all_articles if a.image_url)
-    videos_found = sum(1 for a in all_articles if a.video_url)
+    images_found = sum(1 for a in all_reports if a.image_url)
+    videos_found = sum(1 for a in all_reports if a.video_url)
     logger.info(
-        f"Media found: {images_found}/{len(all_articles)} images, "
-        f"{videos_found}/{len(all_articles)} videos"
+        f"Media found: {images_found}/{len(all_reports)} images, "
+        f"{videos_found}/{len(all_reports)} videos"
     )
 
-    return all_articles
+    return all_reports

@@ -24,29 +24,30 @@ export function formatTimeAgo(dateString: string): string {
   return `${diffWeeks}w ago`;
 }
 
-// ─── Telegram source utilities ───
+// ─── Source utilities ───
+// A Source key is its web address (docs/adr/0001-source-key-is-web-address.md),
+// so Telegram channels are the keys under t.me/.
 
-const TELEGRAM_SOURCES: Record<string, { label: string; channel: string }> = {
-  "tg-frontline": { label: "Frontline", channel: "FrontlineReportNews" },
-  "tg-bellumacta": { label: "Bellum Acta", channel: "BellumActaNews" },
-  "tg-rnintel": { label: "RN Intel", channel: "rnintel" },
-  "tg-globaleye": { label: "Global Eye", channel: "tglobaleye" },
-  "tg-tupireport": { label: "Tupi Report", channel: "tupireport" },
-  "tg-disclosetv": { label: "Disclose.tv", channel: "disclosetv" },
+const SOURCE_LABELS: Record<string, string> = {
+  "t.me/frontlinereportnews": "Frontline",
+  "t.me/bellumactanews": "Bellum Acta",
+  "t.me/rnintel": "RN Intel",
+  "t.me/tglobaleye": "Global Eye",
+  "t.me/tupireport": "Tupi Report",
+  "t.me/disclosetv": "Disclose.tv",
 };
 
-/** Check if a source slug is a Telegram source */
-export function isTelegramSource(source: string): boolean {
-  return source.startsWith("tg-");
+/** Check if a Source key is a Telegram channel. For "did this Report arrive via Telegram", use `report.feed`. */
+export function isTelegramChannel(source: string): boolean {
+  return source.startsWith("t.me/");
 }
 
-/** Get display label for a source — Telegram channels get nice names */
+/** Get display label for a Source — curated channels get nice names */
 export function getSourceLabel(source: string): string {
-  return TELEGRAM_SOURCES[source]?.label ?? source;
+  return SOURCE_LABELS[source] ?? source;
 }
 
-/** Get the Telegram channel URL for a source, or null if not a Telegram source */
+/** Get the Telegram channel URL for a Source, or null if not a Telegram channel */
 export function getTelegramChannelUrl(source: string): string | null {
-  const tg = TELEGRAM_SOURCES[source];
-  return tg ? `https://t.me/${tg.channel}` : null;
+  return isTelegramChannel(source) ? `https://${source}` : null;
 }

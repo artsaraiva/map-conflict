@@ -9,11 +9,11 @@ A channel through which Reports enter the system: Telegram, RSS, X, or GDELT. A 
 _Avoid_: Source (when meaning the pipe), channel, provider
 
 **Source**:
-The outlet or account that published a Report, such as BBC, Reuters, `rnintel`, or `@OSINTdefender`. The same Source may reach us through several Feeds and is still one Source.
+The organisation or person that published a Report, such as BBC, Reuters, `rnintel`, or `@OSINTdefender`. An organisation's website, X account, and Telegram channel are one Source, and the same Source reaching us through several Feeds is still one Source.
 _Avoid_: Feed, outlet, publisher
 
 **Report**:
-A single item published by one Source and received through one Feed: a news story, a Telegram post, a tweet.
+A single item published by one Source and received through one Feed: a news story, a Telegram post, a tweet. A Report belongs to at most one Event; it belongs to none when it is not geopolitical or cannot be placed.
 _Avoid_: Article, item, message, post
 
 ## Events

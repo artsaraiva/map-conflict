@@ -25,7 +25,7 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://edition.cnn.com/2026/03/12/americas/panama-canal-strait-hormuz-oil-iran-war-intl-latam",
                 "title": "Iran closes Strait of Hormuz as oil prices spike globally",
-                "source": "cnn",
+                "source": "cnn.com",
                 "summary": "Iran has closed the Strait of Hormuz, one of the world's most important oil chokepoints, as tensions escalate.",
             },
         ],
@@ -43,7 +43,7 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://example.com/ukraine-donbas",
                 "title": "Fighting intensifies in Donbas as winter offensive continues",
-                "source": "reuters",
+                "source": "reuters.com",
                 "summary": "Both sides have escalated operations in the Donbas region with heavy artillery exchanges.",
             },
         ],
@@ -61,7 +61,7 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://example.com/taiwan-exercises",
                 "title": "China launches largest military exercises near Taiwan in years",
-                "source": "bbc",
+                "source": "bbc.co.uk",
                 "summary": "PLA conducts unprecedented military drills around Taiwan including live fire exercises.",
             },
         ],
@@ -79,7 +79,7 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://example.com/kashmir-tensions",
                 "title": "Cross-border shelling resumes along Line of Control",
-                "source": "aljazeera",
+                "source": "aljazeera.com",
                 "summary": "India and Pakistan exchange fire along the LoC as tensions in Kashmir reach new heights.",
             },
         ],
@@ -97,7 +97,7 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://example.com/us-russia-sanctions",
                 "title": "Biden administration unveils most extensive Russia sanctions yet",
-                "source": "ap",
+                "source": "apnews.com",
                 "summary": "New sanctions target Russia's largest banks and energy sector.",
             },
         ],
@@ -115,7 +115,7 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://example.com/houthi-red-sea",
                 "title": "Houthi attacks force major shipping companies to reroute from Red Sea",
-                "source": "reuters",
+                "source": "reuters.com",
                 "summary": "Commercial vessels avoid Red Sea as Houthi attacks intensify.",
             },
         ],
@@ -133,7 +133,7 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://example.com/georgia-protests",
                 "title": "Massive protests rock Tbilisi as Georgians resist foreign agent law",
-                "source": "guardian",
+                "source": "theguardian.com",
                 "summary": "Pro-EU demonstrators flood the streets opposing Russia-style legislation.",
             },
         ],
@@ -151,7 +151,7 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://example.com/drc-m23",
                 "title": "M23 rebels threaten Goma as DRC conflict intensifies",
-                "source": "bbc",
+                "source": "bbc.co.uk",
                 "summary": "Rebels backed by Rwanda advance in Eastern DRC, causing mass displacement.",
             },
         ],
@@ -169,7 +169,7 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://example.com/sudan-crisis",
                 "title": "UN warns of famine as Sudan conflict enters second year",
-                "source": "aljazeera",
+                "source": "aljazeera.com",
                 "summary": "Millions face starvation as fighting between SAF and RSF continues.",
             },
         ],
@@ -187,7 +187,7 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://example.com/nk-missiles",
                 "title": "North Korea launches multiple ballistic missiles in latest provocation",
-                "source": "npr",
+                "source": "npr.org",
                 "summary": "Pyongyang fires series of ballistic missiles as regional tensions mount.",
             },
         ],
@@ -205,7 +205,7 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://example.com/eu-china-tariffs",
                 "title": "EU slaps tariffs on Chinese EVs as trade war escalates",
-                "source": "reuters",
+                "source": "reuters.com",
                 "summary": "New tariffs on Chinese electric vehicles threaten broader trade conflict.",
             },
         ],
@@ -223,13 +223,13 @@ SAMPLE_EVENTS = [
             {
                 "url": "https://example.com/gaza-operation",
                 "title": "Israeli forces expand operations in Gaza as ceasefire talks stall",
-                "source": "cnn",
+                "source": "cnn.com",
                 "summary": "Military operations continue in Gaza with no ceasefire agreement in sight.",
             },
             {
                 "url": "https://example.com/gaza-humanitarian",
                 "title": "UN agencies warn of catastrophic humanitarian conditions in Gaza",
-                "source": "guardian",
+                "source": "theguardian.com",
                 "summary": "Aid organizations struggle to deliver supplies as conflict intensifies.",
             },
         ],

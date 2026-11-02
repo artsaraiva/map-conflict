@@ -1,11 +1,11 @@
 """
 Main processing pipeline: scrape -> classify -> geocode -> store.
-Multi-source ingestion: Telegram + RSS feeds.
+Every Feed adapter returns Reports; run_feed sends them through process_article.
 """
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -13,7 +13,12 @@ from sqlalchemy.orm import selectinload
 
 from backend.core.config import get_settings
 from backend.models.event import Event, Article, EventRelationship, EventType, SeverityLevel
-from backend.scraping.rss_scraper import ScrapedArticle, scrape_all_feeds
+from backend.scraping.gdelt_scraper import scrape_gdelt
+from backend.scraping.report import Report
+from backend.scraping.rss_scraper import scrape_all_feeds
+from backend.scraping.sources import source_key
+from backend.scraping.telegram_scraper import scrape_telegram_channels
+from backend.scraping.x_scraper import scrape_x_accounts
 from backend.processing.nlp import classify_article, text_similarity
 from backend.processing.geocoder import geocode_location
 
@@ -183,20 +188,20 @@ async def _find_similar_event(
     return best_event
 
 
-def _strip_tz(dt: datetime | None) -> datetime | None:
-    """Strip timezone info for naive TIMESTAMP columns."""
-    if dt is None:
-        return None
-    return dt.replace(tzinfo=None) if dt.tzinfo else dt
+def _to_naive_utc(dt: datetime | None) -> datetime | None:
+    """Convert to UTC, then drop tzinfo for naive TIMESTAMP columns. Naive input is taken as UTC."""
+    if dt is None or dt.tzinfo is None:
+        return dt
+    return dt.astimezone(timezone.utc).replace(tzinfo=None)
 
 
-async def process_article(session: AsyncSession, scraped: ScrapedArticle) -> bool:
+async def process_article(session: AsyncSession, scraped: Report) -> bool:
     """
     Process a single scraped article through the full pipeline.
     Returns True if an event was created/updated.
     """
     # Normalize published_at to naive UTC
-    scraped.published_at = _strip_tz(scraped.published_at)
+    scraped.published_at = _to_naive_utc(scraped.published_at)
 
     # Skip if already processed
     if await _article_exists(session, scraped.url):
@@ -210,6 +215,7 @@ async def process_article(session: AsyncSession, scraped: ScrapedArticle) -> boo
             url=scraped.url,
             title=scraped.title,
             source=scraped.source,
+            feed=scraped.feed,
             summary=scraped.description[:500] if scraped.description else None,
             image_url=scraped.image_url,
             video_url=scraped.video_url,
@@ -251,6 +257,7 @@ async def process_article(session: AsyncSession, scraped: ScrapedArticle) -> boo
             url=scraped.url,
             title=scraped.title,
             source=scraped.source,
+            feed=scraped.feed,
             summary=analysis.summary or scraped.description[:500],
             image_url=scraped.image_url,
             video_url=scraped.video_url,
@@ -299,6 +306,7 @@ async def process_article(session: AsyncSession, scraped: ScrapedArticle) -> boo
         url=scraped.url,
         title=scraped.title,
         source=scraped.source,
+        feed=scraped.feed,
         summary=analysis.summary or scraped.description[:500],
         image_url=scraped.image_url,
         video_url=scraped.video_url,
@@ -318,179 +326,49 @@ async def process_article(session: AsyncSession, scraped: ScrapedArticle) -> boo
     return True
 
 
-async def run_telegram_pipeline():
-    """Run the Telegram scrape -> process -> store pipeline."""
-    from backend.scraping.telegram_scraper import scrape_telegram_channels
+FEEDS = {
+    "telegram": scrape_telegram_channels,
+    "rss": lambda: scrape_all_feeds(get_settings().max_articles_per_feed),
+    "x": scrape_x_accounts,
+    "gdelt": scrape_gdelt,
+}
 
-    logger.info("Starting Telegram pipeline run...")
 
-    articles = await scrape_telegram_channels()
-    if not articles:
-        logger.info("Telegram pipeline: no articles to process.")
+async def run_feed(name: str) -> int:
+    """Fetch one Feed's Reports and process each. Returns Events created or updated."""
+    reports = await FEEDS[name]()
+    logger.info(f"{name}: fetched {len(reports)} Reports")
+    if not reports:
         return 0
 
-    logger.info(f"Telegram scraped {len(articles)} messages, processing...")
-
     session = await _get_session()
-    events_created = 0
-
+    events = 0
     try:
-        for scraped in articles:
+        for report in reports:
+            report.feed = name
+            report.source = report.source or source_key(report.url)
             try:
-                if await process_article(session, scraped):
-                    events_created += 1
+                if await process_article(session, report):
+                    events += 1
             except Exception as e:
-                logger.error(
-                    f"Error processing Telegram message '{scraped.title}': {e}"
-                )
+                logger.error(f"{name}: error processing '{report.title}': {e}")
                 await session.rollback()
-                continue
     finally:
         await session.close()
 
-    logger.info(f"Telegram pipeline complete. Events created/updated: {events_created}")
-    return events_created
+    logger.info(f"{name}: Events created/updated: {events}")
+    return events
 
 
-async def run_rss_pipeline():
-    """Run the RSS scrape -> process -> store pipeline."""
-    settings = get_settings()
-    max_per_feed = settings.max_articles_per_feed
-
-    logger.info(f"Starting RSS pipeline run (max {max_per_feed}/feed)...")
-
-    articles = await scrape_all_feeds(max_articles_per_feed=max_per_feed)
-    if not articles:
-        logger.info("RSS pipeline: no articles to process.")
-        return 0
-
-    logger.info(f"RSS scraped {len(articles)} articles, processing...")
-
-    session = await _get_session()
-    events_created = 0
-
-    try:
-        for scraped in articles:
-            try:
-                if await process_article(session, scraped):
-                    events_created += 1
-            except Exception as e:
-                logger.error(f"Error processing RSS article '{scraped.title}': {e}")
-                await session.rollback()
-                continue
-    finally:
-        await session.close()
-
-    logger.info(f"RSS pipeline complete. Events created/updated: {events_created}")
-    return events_created
-
-
-async def run_x_pipeline():
-    """Run the X (Twitter) scrape -> process -> store pipeline."""
-    from backend.scraping.x_scraper import scrape_x_accounts
-
-    logger.info("Starting X pipeline run...")
-
-    articles = await scrape_x_accounts()
-    if not articles:
-        logger.info("X pipeline: no articles to process (token missing or no results).")
-        return 0
-
-    logger.info(f"X scraped {len(articles)} tweets, processing...")
-
-    session = await _get_session()
-    events_created = 0
-
-    try:
-        for scraped in articles:
-            try:
-                if await process_article(session, scraped):
-                    events_created += 1
-            except Exception as e:
-                logger.error(f"Error processing X tweet '{scraped.title}': {e}")
-                await session.rollback()
-                continue
-    finally:
-        await session.close()
-
-    logger.info(f"X pipeline complete. Events created/updated: {events_created}")
-    return events_created
-
-
-async def run_gdelt_pipeline():
-    """Run the GDELT Doc API scrape -> process -> store pipeline."""
-    from backend.scraping.gdelt_scraper import scrape_gdelt
-
-    logger.info("Starting GDELT pipeline run...")
-
-    articles = await scrape_gdelt()
-    if not articles:
-        logger.info("GDELT pipeline: no articles returned.")
-        return 0
-
-    logger.info(f"GDELT scraped {len(articles)} articles, processing...")
-
-    session = await _get_session()
-    events_created = 0
-
-    try:
-        for scraped in articles:
-            try:
-                if await process_article(session, scraped):
-                    events_created += 1
-            except Exception as e:
-                logger.error(f"Error processing GDELT article '{scraped.title}': {e}")
-                await session.rollback()
-                continue
-    finally:
-        await session.close()
-
-    logger.info(f"GDELT pipeline complete. Events created/updated: {events_created}")
-    return events_created
-
-
-async def run_all_sources_pipeline():
-    """
-    Run all ingestion sources concurrently: Telegram + RSS + X + GDELT.
-
-    Each source is independent — if one fails, the others still complete.
-    Returns a dict with per-source event counts.
-    """
-    logger.info("Starting multi-source pipeline run...")
-
-    results = await asyncio.gather(
-        run_telegram_pipeline(),
-        run_rss_pipeline(),
-        run_x_pipeline(),
-        run_gdelt_pipeline(),
-        return_exceptions=True,
-    )
-
-    telegram_count = results[0] if isinstance(results[0], int) else 0
-    rss_count = results[1] if isinstance(results[1], int) else 0
-    x_count = results[2] if isinstance(results[2], int) else 0
-    gdelt_count = results[3] if isinstance(results[3], int) else 0
-
-    if isinstance(results[0], BaseException):
-        logger.error(f"Telegram pipeline failed: {results[0]}")
-    if isinstance(results[1], BaseException):
-        logger.error(f"RSS pipeline failed: {results[1]}")
-    if isinstance(results[2], BaseException):
-        logger.error(f"X pipeline failed: {results[2]}")
-    if isinstance(results[3], BaseException):
-        logger.error(f"GDELT pipeline failed: {results[3]}")
-
-    total = telegram_count + rss_count + x_count + gdelt_count
-    logger.info(
-        f"Multi-source pipeline complete. "
-        f"Telegram: {telegram_count}, RSS: {rss_count}, X: {x_count}, "
-        f"GDELT: {gdelt_count}, Total: {total}"
-    )
-
-    return {
-        "telegram": telegram_count,
-        "rss": rss_count,
-        "x": x_count,
-        "gdelt": gdelt_count,
-        "total": total,
-    }
+async def run_all_feeds() -> dict[str, int]:
+    """Run every Feed concurrently; one failing Feed does not stop the others."""
+    results = await asyncio.gather(*(run_feed(n) for n in FEEDS), return_exceptions=True)
+    counts = {}
+    for name, result in zip(FEEDS, results):
+        if isinstance(result, BaseException):
+            logger.error(f"{name} Feed failed: {result}")
+            result = 0
+        counts[name] = result
+    counts["total"] = sum(counts.values())
+    logger.info(f"All Feeds complete: {counts}")
+    return counts
