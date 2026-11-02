@@ -5,6 +5,7 @@ export interface Article {
   url: string;
   title: string;
   source: string;
+  feed: string | null;
   summary: string | null;
   published_at: string | null;
   image_url: string | null;

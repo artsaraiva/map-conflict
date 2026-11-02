@@ -2,7 +2,7 @@
 Telegram channel scraper using Telethon.
 
 Polls configured public Telegram channels for new messages, downloads photo
-thumbnails to a local directory, and returns ScrapedArticle objects compatible
+thumbnails to a local directory, and returns Report objects compatible
 with the existing processing pipeline.
 
 Requires TELEGRAM_API_ID, TELEGRAM_API_HASH, and TELEGRAM_SESSION env vars.
@@ -25,19 +25,19 @@ from telethon.tl.types import (
 )
 
 from backend.core.config import get_settings
-from backend.scraping.rss_scraper import ScrapedArticle
+from backend.scraping.report import Report
 
 logger = logging.getLogger(__name__)
 
 # ── Channel configuration ───────────────────────────────────────────────────
-# Each entry maps a public channel username to a source slug for the DB.
+# Public channel usernames. Each channel's Source key is t.me/<username>.
 TELEGRAM_CHANNELS = [
-    {"username": "FrontlineReportNews", "source": "tg-frontline"},
-    {"username": "BellumActaNews", "source": "tg-bellumacta"},
-    {"username": "rnintel", "source": "tg-rnintel"},
-    {"username": "tglobaleye", "source": "tg-globaleye"},
-    {"username": "tupireport", "source": "tg-tupireport"},
-    {"username": "disclosetv", "source": "tg-disclosetv"},
+    "FrontlineReportNews",
+    "BellumActaNews",
+    "rnintel",
+    "tglobaleye",
+    "tupireport",
+    "disclosetv",
 ]
 
 
@@ -241,34 +241,22 @@ async def _download_video(
     return video_url, thumb_url
 
 
-async def scrape_telegram_channels() -> list[ScrapedArticle]:
+async def scrape_telegram_channels() -> list[Report]:
     """
-    Scrape all configured Telegram channels and return ScrapedArticle objects.
+    Scrape all configured Telegram channels and return Report objects.
 
     - Connects via StringSession (no interactive auth needed)
     - Fetches the latest N messages from each channel
     - Downloads photo thumbnails to the local media directory
-    - Maps each message to a ScrapedArticle for the processing pipeline
+    - Maps each message to a Report for the processing pipeline
     - Gracefully returns [] if Telegram is not configured
     """
     settings = get_settings()
 
     # Build channel list from settings (allows override via env var)
-    if settings.telegram_channels:
-        channel_usernames = [
-            ch.strip() for ch in settings.telegram_channels.split(",") if ch.strip()
-        ]
-        # Build config list, matching against known slugs or generating one
-        slug_map = {c["username"]: c["source"] for c in TELEGRAM_CHANNELS}
-        channels = [
-            {
-                "username": u,
-                "source": slug_map.get(u, f"tg-{u.lower()[:20]}"),
-            }
-            for u in channel_usernames
-        ]
-    else:
-        channels = TELEGRAM_CHANNELS
+    channels = [
+        ch.strip() for ch in settings.telegram_channels.split(",") if ch.strip()
+    ] or TELEGRAM_CHANNELS
 
     client = _get_client()
     if client is None:
@@ -276,15 +264,13 @@ async def scrape_telegram_channels() -> list[ScrapedArticle]:
 
     media_dir = settings.telegram_media_dir
     max_messages = settings.telegram_max_messages
-    all_articles: list[ScrapedArticle] = []
+    all_reports: list[Report] = []
 
     try:
         await client.start()
         logger.info(f"Telegram client connected. Scraping {len(channels)} channels...")
 
-        for channel_cfg in channels:
-            username = channel_cfg["username"]
-            source = channel_cfg["source"]
+        for username in channels:
 
             try:
                 messages = await client.get_messages(username, limit=max_messages)
@@ -305,8 +291,6 @@ async def scrape_telegram_channels() -> list[ScrapedArticle]:
 
                     # Published timestamp
                     published_at = msg.date
-                    if published_at and published_at.tzinfo:
-                        published_at = published_at.replace(tzinfo=None)
 
                     # Download photo if present
                     image_url = await _download_photo(client, msg, username, media_dir)
@@ -322,16 +306,15 @@ async def scrape_telegram_channels() -> list[ScrapedArticle]:
                         if not image_url and thumb_url:
                             image_url = thumb_url
 
-                    article = ScrapedArticle(
+                    report = Report(
                         url=url,
                         title=title,
-                        source=source,
                         description=text,
                         published_at=published_at,
                         image_url=image_url,
                         video_url=video_url,
                     )
-                    all_articles.append(article)
+                    all_reports.append(report)
                     processed += 1
 
                 logger.info(f"@{username}: processed {processed} messages with text")
@@ -347,11 +330,11 @@ async def scrape_telegram_channels() -> list[ScrapedArticle]:
     finally:
         await client.disconnect()
 
-    images_count = sum(1 for a in all_articles if a.image_url)
-    videos_count = sum(1 for a in all_articles if a.video_url)
+    images_count = sum(1 for a in all_reports if a.image_url)
+    videos_count = sum(1 for a in all_reports if a.video_url)
     logger.info(
-        f"Telegram scrape complete: {len(all_articles)} messages, "
+        f"Telegram scrape complete: {len(all_reports)} messages, "
         f"{images_count} photos, {videos_count} videos"
     )
 
-    return all_articles
+    return all_reports

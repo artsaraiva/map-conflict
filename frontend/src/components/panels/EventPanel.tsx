@@ -2,7 +2,7 @@
 
 import { GeoEvent, Article, RelatedEvent, EVENT_TYPE_CONFIG, SEVERITY_CONFIG } from "@/lib/types";
 import { fetchRelatedEvents } from "@/lib/api";
-import { formatTimeAgo, isTelegramSource, getSourceLabel, getTelegramChannelUrl } from "@/lib/utils";
+import { formatTimeAgo, isTelegramChannel, getSourceLabel, getTelegramChannelUrl } from "@/lib/utils";
 import { getEmbedInfo, getVideoPlatformLabel, isTelegramLink, isLocalVideo } from "@/lib/media-utils";
 import clsx from "clsx";
 import { useState, useMemo, useEffect } from "react";
@@ -104,7 +104,7 @@ function TelegramIcon({ size = 12, className = "" }: { size?: number; className?
 
 /** Source badge — Telegram sources get a distinct look */
 function SourceBadge({ source }: { source: string }) {
-  const isTg = isTelegramSource(source);
+  const isTg = isTelegramChannel(source);
   const label = getSourceLabel(source);
   const channelUrl = getTelegramChannelUrl(source);
 
@@ -229,9 +229,9 @@ function MediaGallery({ articles, onImageError }: { articles: Article[]; onImage
             <div className="absolute bottom-0 left-0 right-0 p-1">
               <span className={clsx(
                 "text-[9px] uppercase tracking-wider line-clamp-1",
-                isTelegramSource(article.source) ? "text-[#29a9eb]" : "text-[#c8d4d6]"
+                article.feed === "telegram" ? "text-[#29a9eb]" : "text-[#c8d4d6]"
               )}>
-                {isTelegramSource(article.source) && "TG "}{getSourceLabel(article.source)}
+                {article.feed === "telegram" && "TG "}{getSourceLabel(article.source)}
               </span>
             </div>
           </a>
@@ -609,7 +609,7 @@ export default function EventPanel({
                   poster={heroLocalVideo.image_url || heroImage || undefined}
                 />
                 <div className="text-[10px] uppercase tracking-wider text-[#5d7078]">
-                  Via <span className={isTelegramSource(heroLocalVideo.source) ? "text-[#29a9eb]" : ""}>
+                  Via <span className={heroLocalVideo.feed === "telegram" ? "text-[#29a9eb]" : ""}>
                     {getSourceLabel(heroLocalVideo.source)}
                   </span>
                 </div>
@@ -618,7 +618,7 @@ export default function EventPanel({
               <div className="space-y-2">
                 <VideoEmbed url={heroVideo.video_url!} />
               <div className="text-[10px] uppercase tracking-wider text-[#5d7078]">
-                  Via <span className={isTelegramSource(heroVideo.source) ? "text-[#29a9eb]" : ""}>
+                  Via <span className={heroVideo.feed === "telegram" ? "text-[#29a9eb]" : ""}>
                     {getSourceLabel(heroVideo.source)}
                   </span>
                 </div>

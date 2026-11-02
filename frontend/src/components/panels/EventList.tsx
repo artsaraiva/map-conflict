@@ -14,7 +14,7 @@ import {
   ALL_SEVERITIES,
   KNOWN_THEATERS,
 } from "@/lib/types";
-import { formatTimeAgo, isTelegramSource, getSourceLabel } from "@/lib/utils";
+import { formatTimeAgo, isTelegramChannel, getSourceLabel } from "@/lib/utils";
 import clsx from "clsx";
 
 /** Thumbnail image with error handling — hides itself on load failure */
@@ -385,7 +385,7 @@ export default function EventList({
                             <>
                               <span className="text-[#49565b]">|</span>
                               <span className="flex items-center gap-1.5">
-                                {(event.sources ?? []).some(isTelegramSource) && (
+                                {(event.sources ?? []).some(isTelegramChannel) && (
                                   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="text-[#29a9eb]">
                                     <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z" />
                                   </svg>
@@ -395,7 +395,7 @@ export default function EventList({
                                     key={s}
                                     className={clsx(
                                       "text-[10px] uppercase tracking-wider",
-                                      isTelegramSource(s) ? "text-[#29a9eb]" : "text-[#708186]"
+                                      isTelegramChannel(s) ? "text-[#29a9eb]" : "text-[#708186]"
                                     )}
                                   >
                                     {getSourceLabel(s)}

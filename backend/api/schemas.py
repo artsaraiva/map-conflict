@@ -8,6 +8,7 @@ class ArticleResponse(BaseModel):
     url: str
     title: str
     source: str
+    feed: Optional[str] = None
     summary: Optional[str] = None
     image_url: Optional[str] = None
     video_url: Optional[str] = None

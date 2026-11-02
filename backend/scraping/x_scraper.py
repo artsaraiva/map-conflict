@@ -4,17 +4,13 @@ X (Twitter) scraper stub.
 Monitors analyst, journalist, and official accounts for geopolitical signals.
 Requires X API v2 Bearer Token configured via X_BEARER_TOKEN environment variable.
 
-This module follows the same ScrapedArticle interface as rss_scraper.py so it
-can be dropped into the pipeline without changes to process_article().
+Returns Reports like every other Feed adapter.
 """
 
 import logging
 import os
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
 
-from backend.scraping.rss_scraper import ScrapedArticle
+from backend.scraping.report import Report
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +32,9 @@ MAX_TWEETS_PER_ACCOUNT = 10
 
 async def scrape_x_accounts(
     max_per_account: int = MAX_TWEETS_PER_ACCOUNT,
-) -> list[ScrapedArticle]:
+) -> list[Report]:
     """
-    Fetch recent tweets from monitored accounts and return them as ScrapedArticles.
+    Fetch recent tweets from monitored accounts and return them as Reports.
 
     Requires X_BEARER_TOKEN in the environment.  Returns an empty list and logs
     a warning if the token is not configured, so the pipeline degrades gracefully.
@@ -57,7 +53,7 @@ async def scrape_x_accounts(
         logger.error("httpx not installed — cannot scrape X. Add it to requirements.")
         return []
 
-    articles: list[ScrapedArticle] = []
+    reports: list[Report] = []
     headers = {"Authorization": f"Bearer {bearer_token}"}
 
     async with httpx.AsyncClient(timeout=30) as client:
@@ -105,12 +101,11 @@ async def scrape_x_accounts(
                     except Exception:
                         created_at = None
 
-                    articles.append(
-                        ScrapedArticle(
+                    reports.append(
+                        Report(
                             url=f"https://twitter.com/{handle}/status/{tweet_id}",
                             title=text[:200],
                             description=text,
-                            source=f"x:{handle}",
                             published_at=created_at,
                             image_url=None,
                             video_url=None,
@@ -121,5 +116,5 @@ async def scrape_x_accounts(
                 logger.error(f"X: error scraping @{handle}: {e}")
                 continue
 
-    logger.info(f"X scraper fetched {len(articles)} tweets from {len(X_ACCOUNTS)} accounts")
-    return articles
+    logger.info(f"X scraper fetched {len(reports)} tweets from {len(X_ACCOUNTS)} accounts")
+    return reports

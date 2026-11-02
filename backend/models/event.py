@@ -116,6 +116,7 @@ class Article(Base):
     url = Column(String(2000), nullable=False)
     title = Column(String(500), nullable=False)
     source = Column(String(200), nullable=False)
+    feed = Column(String(20), nullable=True)
     summary = Column(Text, nullable=True)
     image_url = Column(String(2000), nullable=True)
     video_url = Column(String(2000), nullable=True)
