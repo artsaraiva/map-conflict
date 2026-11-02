@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { expression, latest } from "@maplibre/maplibre-gl-style-spec";
 import { densityCells, densityOpacity, timeRange, visibleEvents } from "@/lib/map-view";
-import { SEVERITY_CONFIG } from "@/lib/types";
+import { EventType, SEVERITY_CONFIG, SeverityLevel } from "@/lib/types";
 
 const event = (id: number, created_at: string) => ({ id, created_at });
 
@@ -58,8 +58,8 @@ const placed = (
   over: Partial<{
     latitude: number;
     longitude: number;
-    event_type: "conflict" | "sanctions" | "military_movement";
-    severity: "low" | "medium" | "high" | "critical";
+    event_type: EventType;
+    severity: SeverityLevel;
     source_count: number | null;
     article_count: number;
   }> = {},
