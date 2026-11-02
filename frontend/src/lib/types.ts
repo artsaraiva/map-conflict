@@ -90,7 +90,7 @@ export const EVENT_TYPE_CONFIG: Record<
     label: string;
     color: string;
     pulseColor: string;
-    hotspotColor: string;
+    densityColor: string;
     icon: string;
     family: EventVisualFamily;
   }
@@ -99,7 +99,7 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Armed Conflict",
     color: "#ff5b4d",
     pulseColor: "rgba(255, 91, 77, 0.36)",
-    hotspotColor: "rgba(255, 91, 77, 0.2)",
+    densityColor: "rgba(255, 91, 77, 0.2)",
     icon: "crossed-swords",
     family: "conflict",
   },
@@ -107,7 +107,7 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Naval Pressure",
     color: "#6e8dff",
     pulseColor: "rgba(110, 141, 255, 0.34)",
-    hotspotColor: "rgba(110, 141, 255, 0.2)",
+    densityColor: "rgba(110, 141, 255, 0.2)",
     icon: "anchor",
     family: "strategic",
   },
@@ -115,7 +115,7 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Diplomatic Tension",
     color: "#75d1ff",
     pulseColor: "rgba(117, 209, 255, 0.32)",
-    hotspotColor: "rgba(117, 209, 255, 0.18)",
+    densityColor: "rgba(117, 209, 255, 0.18)",
     icon: "handshake",
     family: "diplomatic",
   },
@@ -123,7 +123,7 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Sanctions",
     color: "#f2b34f",
     pulseColor: "rgba(242, 179, 79, 0.34)",
-    hotspotColor: "rgba(242, 179, 79, 0.2)",
+    densityColor: "rgba(242, 179, 79, 0.2)",
     icon: "ban",
     family: "economic",
   },
@@ -131,7 +131,7 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Internal Unrest",
     color: "#d675ff",
     pulseColor: "rgba(214, 117, 255, 0.34)",
-    hotspotColor: "rgba(214, 117, 255, 0.18)",
+    densityColor: "rgba(214, 117, 255, 0.18)",
     icon: "megaphone",
     family: "instability",
   },
@@ -139,7 +139,7 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Military Movement",
     color: "#ff7c44",
     pulseColor: "rgba(255, 124, 68, 0.34)",
-    hotspotColor: "rgba(255, 124, 68, 0.18)",
+    densityColor: "rgba(255, 124, 68, 0.18)",
     icon: "tank",
     family: "strategic",
   },
@@ -147,7 +147,7 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Trade Dispute",
     color: "#ffcf6a",
     pulseColor: "rgba(255, 207, 106, 0.3)",
-    hotspotColor: "rgba(255, 207, 106, 0.18)",
+    densityColor: "rgba(255, 207, 106, 0.18)",
     icon: "chart",
     family: "economic",
   },
@@ -155,7 +155,7 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Humanitarian",
     color: "#57d7a7",
     pulseColor: "rgba(87, 215, 167, 0.3)",
-    hotspotColor: "rgba(87, 215, 167, 0.18)",
+    densityColor: "rgba(87, 215, 167, 0.18)",
     icon: "heart",
     family: "humanitarian",
   },
@@ -163,20 +163,29 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Other",
     color: "#8e97ab",
     pulseColor: "rgba(142, 151, 171, 0.28)",
-    hotspotColor: "rgba(142, 151, 171, 0.16)",
+    densityColor: "rgba(142, 151, 171, 0.16)",
     icon: "info",
     family: "neutral",
   },
 };
 
+// The one Severity table: rank orders Severity (higher is more severe) everywhere.
 export const SEVERITY_CONFIG: Record<
   SeverityLevel,
-  { label: string; size: number; pulseSize: number }
+  {
+    label: string;
+    rank: number;
+    weight: number;
+    opacity: number;
+    briefingColor: string;
+    size: number;
+    pulseSize: number;
+  }
 > = {
-  low: { label: "Low", size: 8, pulseSize: 20 },
-  medium: { label: "Medium", size: 12, pulseSize: 30 },
-  high: { label: "High", size: 16, pulseSize: 40 },
-  critical: { label: "Critical", size: 22, pulseSize: 55 },
+  low: { label: "Low", rank: 0, weight: 0.34, opacity: 0.72, briefingColor: "#9cb0b5", size: 8, pulseSize: 20 },
+  medium: { label: "Medium", rank: 1, weight: 0.58, opacity: 0.72, briefingColor: "#9cb0b5", size: 12, pulseSize: 30 },
+  high: { label: "High", rank: 2, weight: 0.82, opacity: 0.9, briefingColor: "#ffcf7f", size: 16, pulseSize: 40 },
+  critical: { label: "Critical", rank: 3, weight: 1, opacity: 1, briefingColor: "#ff5b4d", size: 22, pulseSize: 55 },
 };
 
 export const VISUAL_FAMILY_CONFIG: Record<
@@ -284,15 +293,5 @@ export function getEventVisualFamily(eventType: EventType): EventVisualFamily {
 }
 
 export function getSeverityWeight(severity: SeverityLevel): number {
-  switch (severity) {
-    case "critical":
-      return 1;
-    case "high":
-      return 0.82;
-    case "medium":
-      return 0.58;
-    case "low":
-    default:
-      return 0.34;
-  }
+  return SEVERITY_CONFIG[severity]?.weight ?? SEVERITY_CONFIG.low.weight;
 }

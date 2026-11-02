@@ -24,7 +24,7 @@ export default function BriefingBar({ events }: NewsTicker) {
       return {
         id: event.id,
         severity: severityConfig?.label?.toUpperCase() ?? "MEDIUM",
-        severityRaw: event.severity,
+        severityColor: severityConfig?.briefingColor ?? SEVERITY_CONFIG.medium.briefingColor,
         location: event.location_name,
         title: event.title,
         color: typeConfig?.color ?? "#8e97ab",
@@ -38,13 +38,7 @@ export default function BriefingBar({ events }: NewsTicker) {
   const tickerContent = tickerItems
     .map(
       (item) =>
-        `<span class="ticker-severity" style="color:${
-          item.severityRaw === "critical"
-            ? "#ff5b4d"
-            : item.severityRaw === "high"
-            ? "#ffcf7f"
-            : "#9cb0b5"
-        }">${item.severity}</span> <span class="ticker-location">${item.location}</span> <span class="ticker-dash">&mdash;</span> <span class="ticker-title">${item.title}</span>`
+        `<span class="ticker-severity" style="color:${item.severityColor}">${item.severity}</span> <span class="ticker-location">${item.location}</span> <span class="ticker-dash">&mdash;</span> <span class="ticker-title">${item.title}</span>`
     )
     .join('<span class="ticker-bullet">&bull;</span>');
 
