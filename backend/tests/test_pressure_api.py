@@ -1,32 +1,14 @@
 """Pressure per Theater: what the API serves for the current window and the one before it."""
 
-import os
-import tempfile
 from datetime import datetime, timedelta
 
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
 
-os.environ.setdefault("MEDIA_DIR", tempfile.mkdtemp())  # the app creates its media directory on import
-from backend.api.main import app  # noqa: E402
-from backend.core.database import get_db  # noqa: E402
-from backend.models.event import Event, SeverityLevel  # noqa: E402
+from backend.models.event import Event, SeverityLevel
 
 pytestmark = pytest.mark.asyncio
 
 NOW = datetime.utcnow()
-
-
-@pytest_asyncio.fixture
-async def client(session):
-    async def test_db():
-        yield session
-
-    app.dependency_overrides[get_db] = test_db
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        yield client
-    app.dependency_overrides.clear()
 
 
 async def add_event(session, theater, severity, confidence, *, hours_ago=1, updated_hours_ago=None):

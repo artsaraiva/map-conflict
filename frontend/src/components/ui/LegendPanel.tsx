@@ -82,7 +82,7 @@ export default function LegendPanel() {
             </span>
             <div
               className="mt-1.5 h-2 rounded-sm"
-              style={{ background: "linear-gradient(90deg, rgba(255,105,74,0.04), rgba(255,105,74,0.5))" }}
+              style={{ background: "linear-gradient(90deg, rgba(255,105,74,0.04), rgba(255,105,74,0.2))" }}
             />
             <div className="mt-0.5 flex justify-between text-[9px] uppercase tracking-[0.14em] text-[#7a9aa3]">
               <span>Least</span>

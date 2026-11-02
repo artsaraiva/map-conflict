@@ -30,4 +30,4 @@ def theater_names() -> list[str]:
 
 def theater_geometries() -> list[tuple[str, dict]]:
     """Every Theater's name and GeoJSON polygon, in file order."""
-    return [(feature["properties"]["name"], feature["geometry"]) for feature in _FEATURES]
+    return [(name, feature["geometry"]) for (name, _), feature in zip(_THEATERS, _FEATURES)]

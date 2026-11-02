@@ -386,7 +386,7 @@ export default function GeoMap({
         type: "fill",
         source: "pressure",
         maxzoom: PRESSURE_MAX_ZOOM,
-        filter: [">", ["get", "shade"], 0],
+        // No filter: a Theater at 0 paints nothing but can still be hovered and clicked
         paint: {
           "fill-color": PRESSURE_COLOR,
           "fill-opacity": [

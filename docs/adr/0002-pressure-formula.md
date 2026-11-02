@@ -9,7 +9,7 @@ These numbers are a first guess and will be tuned once there is real data.
 ## Why each choice
 
 - **Doubling weights**: one critical Event should outweigh several low ones, so each Severity level counts twice the one below rather than one more.
-- **Multiplying by Confidence**: a single-Source claim counts a fifth as much as a well-corroborated Event, so one unconfirmed post cannot light up a Theater.
+- **Multiplying by Confidence**: a single-Source claim counts a fifth as much as a well-corroborated Event, so one uncorroborated Report cannot light up a Theater.
 - **`created_at`, not `updated_at`**: Corroboration raises an Event's Confidence, but it is still one occurrence at one time; counting it in the window where it was corroborated would make old news look like new Pressure.
 - **Window ends at now**: the map shows the present. An `until` parameter for the timeline cursor can be added later without changing the response.
 - **Computed per call**: one grouped aggregate over an indexed `created_at` range is cheap at our volume, and there is nothing to keep in sync.
@@ -17,5 +17,5 @@ These numbers are a first guess and will be tuned once there is real data.
 
 ## Considered Options
 
-- **Counting Events or Reports**: a count ignores Severity and Corroboration, and Report count rewards whichever Source posts most.
+- **Counting Events or Reports**: a count ignores Severity and Corroboration, and Report count rewards whichever Source publishes most.
 - **A stored Pressure table updated by the worker**: rejected for now; it adds a job and a table to keep consistent for a number one query already gives.

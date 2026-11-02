@@ -65,10 +65,10 @@ export default function Home() {
     staleTime: Infinity,
   });
 
-  // Pressure per Theater; refetches on the same schedule as the map points
+  // Pressure per Theater; refetches every minute like the map points (the client default)
   const { data: pressure, refetch: refetchPressure } = useQuery({
     queryKey: ["pressure"],
-    queryFn: () => fetchPressure(),
+    queryFn: fetchPressure,
   });
 
   // Clicking a Theater on the map selects its chip in the Theater filter

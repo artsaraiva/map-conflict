@@ -30,7 +30,10 @@ ESCALATION_FLOOR = 1.6
 
 
 def is_escalating(current: float, previous: float) -> bool:
-    """Pressure rose to at least 1.5× the window before and by at least 1.6; from 0 only the floor applies."""
+    """Pressure rose to at least ESCALATION_RATIO × the window before and by at least ESCALATION_FLOOR.
+
+    From 0, only the floor applies.
+    """
     # Rounded so sums like 4.8 - 3.2 = 1.5999... still meet the threshold they meet on paper
     return (
         round(current - ESCALATION_RATIO * previous, 6) >= 0
@@ -51,7 +54,7 @@ async def theater_pressure(session: AsyncSession, window_hours: int) -> dict[str
         .where(Event.theater.isnot(None), Event.created_at >= now - 2 * window, Event.created_at <= now)
         .group_by(Event.theater)
     )
-    return {theater: (now_score, before) for theater, now_score, before in result}
+    return {theater: (in_window, in_window_before) for theater, in_window, in_window_before in result}
 
 
 @router.get("")

@@ -70,9 +70,9 @@ export async function fetchTheaters(): Promise<string[]> {
   return res.json();
 }
 
-/** Every Theater's polygon with its Pressure over the last `windowHours`. */
-export async function fetchPressure(windowHours = 24): Promise<PressureCollection> {
-  const res = await fetch(`${API_URL}/api/pressure?window_hours=${windowHours}`);
+/** Every Theater's polygon with its Pressure over the last 24 hours. */
+export async function fetchPressure(): Promise<PressureCollection> {
+  const res = await fetch(`${API_URL}/api/pressure`);
   if (!res.ok) throw new Error("Failed to fetch Pressure");
   return res.json();
 }
