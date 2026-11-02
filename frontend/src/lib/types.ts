@@ -83,11 +83,6 @@ export type EventVisualFamily =
   | "humanitarian"
   | "neutral";
 
-export interface EventListResponse {
-  events: GeoEvent[];
-  total: number;
-}
-
 // Visual config for each event type
 export const EVENT_TYPE_CONFIG: Record<
   EventType,
