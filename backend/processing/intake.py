@@ -319,7 +319,8 @@ async def _ingest_one(
         severity = SeverityLevel.MEDIUM
 
     # Matching to an Event, or creating one, and the write that follows run one Report at a
-    # time across all Feeds; the lock is released when the caller commits.
+    # time across all Feeds; the lock lasts until the caller's transaction ends. Needs READ
+    # COMMITTED, so the match query after the lock sees the Event another Feed just committed.
     # ponytail: one global lock key, finer-grained keys (e.g. per Theater) if throughput matters
     await session.execute(select(func.pg_advisory_xact_lock(_INTAKE_LOCK_KEY)))
 

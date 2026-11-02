@@ -214,7 +214,7 @@ async def test_concurrent_matching_reports_from_two_sources_make_one_event(sessi
 
     outcomes = await asyncio.gather(
         ingest([report("bbc")], classify, geocode_together, session_factory),
-        ingest([report("reuters", source="reuters.com")], classify, geocode_together, session_factory),
+        ingest([report("reuters", source="reuters.com", feed="gdelt")], classify, geocode_together, session_factory),
     )
 
     [first], [second] = outcomes
