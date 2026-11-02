@@ -276,7 +276,10 @@ export const ALL_EVENT_TYPES: EventType[] = [
   "humanitarian",
 ];
 
-export const ALL_SEVERITIES: SeverityLevel[] = ["critical", "high", "medium", "low"];
+// Most severe first.
+export const ALL_SEVERITIES = (Object.keys(SEVERITY_CONFIG) as SeverityLevel[]).sort(
+  (a, b) => SEVERITY_CONFIG[b].rank - SEVERITY_CONFIG[a].rank,
+);
 
 export function getEventVisualFamily(eventType: EventType): EventVisualFamily {
   return EVENT_TYPE_CONFIG[eventType]?.family ?? "neutral";
