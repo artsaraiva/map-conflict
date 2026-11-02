@@ -4,7 +4,9 @@ Event intake: turns Reports into Events.
 `ingest` takes a batch of Reports and returns one Outcome per Report, in input
 order. Each Report is processed in its own transaction: the already-seen check,
 classification, geocoding, matching to a recent Event (or creating one),
-Severity, Corroboration and Confidence, Theater, and Links.
+Severity, Corroboration and Confidence, Theater, and Links. Classification and
+geocoding run in parallel across Feeds; matching onward runs under an advisory
+lock, so concurrent Feeds never create two Events for one occurrence.
 """
 
 import logging
@@ -189,6 +191,9 @@ SIMILARITY_THRESHOLD_ANY_TYPE = 0.7
 # Only consider events created in the last N hours for merging
 DEDUP_WINDOW_HOURS = 6
 
+# Advisory lock key that serializes match-or-create across concurrent Feeds
+_INTAKE_LOCK_KEY = 1801
+
 
 async def _article_exists(session: AsyncSession, url: str) -> bool:
     """Check if an article with this URL already exists."""
@@ -312,6 +317,11 @@ async def _ingest_one(
         severity = SeverityLevel(analysis.severity)
     except ValueError:
         severity = SeverityLevel.MEDIUM
+
+    # Matching to an Event, or creating one, and the write that follows run one Report at a
+    # time across all Feeds; the lock is released when the caller commits.
+    # ponytail: one global lock key, finer-grained keys (e.g. per Theater) if throughput matters
+    await session.execute(select(func.pg_advisory_xact_lock(_INTAKE_LOCK_KEY)))
 
     # Check for existing similar event (fuzzy cross-channel deduplication)
     article_text = report.description or report.title

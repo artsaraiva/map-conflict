@@ -1,6 +1,9 @@
 """Event intake: what happens to each Report handed to `ingest`."""
 
+import asyncio
+
 import pytest
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from backend.models.event import Event
@@ -199,3 +202,23 @@ async def test_two_unmapped_gdelt_domains_are_two_sources(session_factory):
 
     assert outcome.kind == "corroborated"
     assert outcome.event.source_count == 2
+
+
+async def test_concurrent_matching_reports_from_two_sources_make_one_event(session_factory):
+    classify = FakeClassifier(bbc=geopolitical(), reuters=geopolitical())
+    both_geocoded = asyncio.Barrier(2)
+
+    async def geocode_together(name):
+        await both_geocoded.wait()  # neither Feed looks for a match until both are placed
+        return await geocode(name)
+
+    outcomes = await asyncio.gather(
+        ingest([report("bbc")], classify, geocode_together, session_factory),
+        ingest([report("reuters", source="reuters.com")], classify, geocode_together, session_factory),
+    )
+
+    [first], [second] = outcomes
+    assert sorted([first.kind, second.kind]) == ["corroborated", "created"]
+    assert first.event.id == second.event.id
+    async with session_factory() as s:
+        assert await s.scalar(select(func.count()).select_from(Event)) == 1
