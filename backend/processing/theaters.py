@@ -13,10 +13,8 @@ from shapely.geometry import shape
 
 THEATERS_PATH = Path(__file__).parent.parent.parent / "data" / "theaters.geojson"
 
-_THEATERS = [
-    (feature["properties"]["name"], shape(feature["geometry"]))
-    for feature in json.loads(THEATERS_PATH.read_text())["features"]
-]
+_FEATURES = json.loads(THEATERS_PATH.read_text())["features"]
+_THEATERS = [(feature["properties"]["name"], shape(feature["geometry"])) for feature in _FEATURES]
 
 
 def theater_for(lat: float, lng: float) -> str | None:
@@ -28,3 +26,8 @@ def theater_for(lat: float, lng: float) -> str | None:
 def theater_names() -> list[str]:
     """Every Theater's name, in file order."""
     return [name for name, _ in _THEATERS]
+
+
+def theater_geometries() -> list[tuple[str, dict]]:
+    """Every Theater's name and GeoJSON polygon, in file order."""
+    return [(name, feature["geometry"]) for (name, _), feature in zip(_THEATERS, _FEATURES)]

@@ -57,3 +57,24 @@ async def session(_test_database):
     async with AsyncSession(engine, expire_on_commit=False) as session:
         yield session
     await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def client(session):
+    """An HTTP client on the app, whose requests use the test session."""
+    import os
+    import tempfile
+
+    os.environ.setdefault("MEDIA_DIR", tempfile.mkdtemp())  # the app creates its media directory on import
+    from httpx import ASGITransport, AsyncClient
+
+    from backend.api.main import app
+    from backend.core.database import get_db
+
+    async def test_db():
+        yield session
+
+    app.dependency_overrides[get_db] = test_db
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        yield client
+    app.dependency_overrides.clear()

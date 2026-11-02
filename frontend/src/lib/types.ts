@@ -281,3 +281,16 @@ export function getSeverityWeight(severity: SeverityLevel): number {
 export function severityRank(severity: SeverityLevel): number {
   return SEVERITY_CONFIG[severity]?.rank ?? SEVERITY_CONFIG.low.rank;
 }
+
+/** A Theater's Pressure in the current window and the one of the same length before it. */
+export interface TheaterPressure {
+  name: string;
+  pressure: number;
+  previous_pressure: number;
+  escalating: boolean;
+}
+
+export type PressureCollection = GeoJSON.FeatureCollection<
+  GeoJSON.Polygon | GeoJSON.MultiPolygon,
+  TheaterPressure
+>;

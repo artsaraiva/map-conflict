@@ -75,6 +75,26 @@ export default function LegendPanel() {
               </div>
             ))}
           </div>
+
+          <div className="mt-3 border-t border-[#33434a]/75 pt-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#7a9aa3]">
+              Pressure
+            </span>
+            <div
+              className="mt-1.5 h-2 rounded-sm"
+              style={{ background: "linear-gradient(90deg, rgba(255,105,74,0.04), rgba(255,105,74,0.2))" }}
+            />
+            <div className="mt-0.5 flex justify-between text-[9px] uppercase tracking-[0.14em] text-[#7a9aa3]">
+              <span>Least</span>
+              <span>Most</span>
+            </div>
+            <div className="mt-1.5 flex items-center gap-2 py-0.5">
+              <span className="h-2.5 w-4 flex-shrink-0 rounded-sm border border-dashed border-[rgb(255,105,74)]" />
+              <span className="text-[11px] uppercase tracking-[0.14em] text-[#c8d4d4]">
+                Escalating
+              </span>
+            </div>
+          </div>
         </aside>
       )}
     </div>

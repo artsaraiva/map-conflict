@@ -1,32 +1,14 @@
 """The Links the API serves for one Event, read from either end."""
 
-import os
-import tempfile
 from datetime import datetime, timedelta
 
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
 
-os.environ.setdefault("MEDIA_DIR", tempfile.mkdtemp())  # the app creates its media directory on import
-from backend.api.main import app  # noqa: E402
-from backend.core.database import get_db  # noqa: E402
-from backend.models.event import Event, EventType, Link, SeverityLevel  # noqa: E402
+from backend.models.event import Event, EventType, Link, SeverityLevel
 
 pytestmark = pytest.mark.asyncio
 
 NOW = datetime.utcnow()
-
-
-@pytest_asyncio.fixture
-async def client(session):
-    async def test_db():
-        yield session
-
-    app.dependency_overrides[get_db] = test_db
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        yield client
-    app.dependency_overrides.clear()
 
 
 async def add_event(session, title, *, hours_ago):

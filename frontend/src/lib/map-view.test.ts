@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { expression, latest } from "@maplibre/maplibre-gl-style-spec";
-import { densityCells, densityOpacity, timeRange, visibleEvents } from "@/lib/map-view";
+import { densityCells, densityOpacity, pressureShade, timeRange, visibleEvents } from "@/lib/map-view";
 import { EventType, SEVERITY_CONFIG, SeverityLevel } from "@/lib/types";
 
 const event = (id: number, created_at: string) => ({ id, created_at });
@@ -140,5 +140,22 @@ describe("Severity rank", () => {
     expect(rank("critical")).toBeGreaterThan(rank("high"));
     expect(rank("high")).toBeGreaterThan(rank("medium"));
     expect(rank("medium")).toBeGreaterThan(rank("low"));
+  });
+});
+
+describe("Pressure shade", () => {
+  it("gives a Theater at 0 no fill", () => {
+    expect(pressureShade(0, 12)).toBe(0);
+    expect(pressureShade(0, 0)).toBe(0);
+  });
+
+  it("fills the Theater with the most Pressure fully", () => {
+    expect(pressureShade(12, 12)).toBe(1);
+  });
+
+  it("shades other Theaters relative to the most, keeping the faintest visible", () => {
+    expect(pressureShade(6, 12)).toBeCloseTo(0.6);
+    expect(pressureShade(0.01, 12)).toBeGreaterThan(0.2);
+    expect(pressureShade(3, 12)).toBeLessThan(pressureShade(6, 12));
   });
 });

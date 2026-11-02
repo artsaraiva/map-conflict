@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { fetchMapPoints, fetchEvent, fetchStrategicLocations, fetchTheaters } from "@/lib/api";
+import { fetchMapPoints, fetchEvent, fetchPressure, fetchStrategicLocations, fetchTheaters } from "@/lib/api";
 import { GeoEvent, MapFilters, MapBounds, DEFAULT_FILTERS } from "@/lib/types";
 import { timeRange, visibleEvents } from "@/lib/map-view";
 import EventPanel from "@/components/panels/EventPanel";
@@ -65,6 +65,21 @@ export default function Home() {
     staleTime: Infinity,
   });
 
+  // Pressure per Theater; refetches every minute like the map points (the client default)
+  const { data: pressure, refetch: refetchPressure } = useQuery({
+    queryKey: ["pressure"],
+    queryFn: fetchPressure,
+  });
+
+  // Clicking a Theater on the map selects its chip in the Theater filter
+  const handleTheaterSelect = useCallback((theater: string) => {
+    setFilters((current) =>
+      current.theaters.includes(theater)
+        ? current
+        : { ...current, theaters: [...current.theaters, theater] }
+    );
+  }, []);
+
   // Apply timeline cursor filter client-side — avoids extra API round-trips
   const visiblePoints = useMemo(
     () => visibleEvents(mapPoints, timelineCursor),
@@ -98,11 +113,11 @@ export default function Home() {
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await refetchPoints();
+      await Promise.all([refetchPoints(), refetchPressure()]);
     } finally {
       setIsRefreshing(false);
     }
-  }, [refetchPoints]);
+  }, [refetchPoints, refetchPressure]);
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-[#081116]">
@@ -121,6 +136,8 @@ export default function Home() {
           selectedEventId={selectedEventId}
           onBoundsChange={setMapBounds}
           strategicLocations={strategicLocations}
+          pressure={pressure}
+          onTheaterSelect={handleTheaterSelect}
         />
       </div>
 
