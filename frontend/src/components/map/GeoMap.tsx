@@ -14,7 +14,7 @@ import {
   getEventVisualFamily,
   getSeverityWeight,
 } from "@/lib/types";
-import { densityCells } from "@/lib/map-view";
+import { densityCells, densityOpacity } from "@/lib/map-view";
 import {
   AnimatedVehicle,
   createAnimatedVehicles,
@@ -124,15 +124,14 @@ function startMainAnimation(
         }
 
         if (m.getLayer("density-core")) {
-          m.setPaintProperty("density-core", "circle-opacity", [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            1.5,
-            0.22 + Math.sin(phase * Math.PI) * 0.04,
-            zoomBreakpoints.regionalMax,
-            0.08,
-          ]);
+          m.setPaintProperty(
+            "density-core",
+            "circle-opacity",
+            densityOpacity([
+              [1.5, 0.22 + Math.sin(phase * Math.PI) * 0.04],
+              [zoomBreakpoints.regionalMax, 0.08],
+            ])
+          );
         }
 
         // ─── Expanding impact ring (high/critical events) ───
@@ -445,17 +444,11 @@ export default function GeoMap({
             ["*", ["get", "radius"], 0.7],
           ],
           "circle-color": ["get", "color"],
-          "circle-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            1.5,
-            0.18,
-            4.5,
-            0.12,
-            7.5,
-            0.03,
-          ],
+          "circle-opacity": densityOpacity([
+            [1.5, 0.18],
+            [4.5, 0.12],
+            [7.5, 0.03],
+          ]),
           "circle-blur": 1,
         },
       });
@@ -477,17 +470,11 @@ export default function GeoMap({
             6,
           ],
           "circle-color": ["get", "color"],
-          "circle-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            1.5,
-            0.24,
-            4.5,
-            0.16,
-            8,
-            0.05,
-          ],
+          "circle-opacity": densityOpacity([
+            [1.5, 0.24],
+            [4.5, 0.16],
+            [8, 0.05],
+          ]),
           "circle-blur": 0.6,
         },
       });
