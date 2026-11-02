@@ -73,7 +73,6 @@ export function densityCells(events: Placed[]): DensityCell[] {
       continue;
     }
 
-    const typeConfig = EVENT_TYPE_CONFIG[event.event_type];
     cells.set(key, {
       key,
       family,
@@ -82,7 +81,7 @@ export function densityCells(events: Placed[]): DensityCell[] {
       count: 1,
       intensity: influence,
       radius: 26 + severityWeight * 32,
-      color: typeConfig?.color ?? "#8e97ab",
+      color: (EVENT_TYPE_CONFIG[event.event_type] ?? EVENT_TYPE_CONFIG.other).color,
     });
   }
 

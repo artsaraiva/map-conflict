@@ -216,7 +216,7 @@ export default function GeoMap({
   // ─── Build supercluster point features from events ───
   const eventPoints = useMemo<Supercluster.PointFeature<EventPointProps>[]>(() => {
     return events.map((event) => {
-      const typeConfig = EVENT_TYPE_CONFIG[event.event_type];
+      const typeConfig = EVENT_TYPE_CONFIG[event.event_type] ?? EVENT_TYPE_CONFIG.other;
       const severityConfig = SEVERITY_CONFIG[event.severity];
       const family = getEventVisualFamily(event.event_type);
 
@@ -234,8 +234,8 @@ export default function GeoMap({
           family,
           location_name: event.location_name,
           article_count: event.article_count,
-          color: typeConfig?.color ?? "#8e97ab",
-          pulseColor: typeConfig?.pulseColor ?? "rgba(142, 151, 171, 0.28)",
+          color: typeConfig.color,
+          pulseColor: typeConfig.pulseColor,
           size: severityConfig?.size ?? 12,
           pulseSize: severityConfig?.pulseSize ?? 30,
           signalOpacity: severityConfig?.opacity ?? 0.72,
