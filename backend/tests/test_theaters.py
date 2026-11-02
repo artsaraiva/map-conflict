@@ -31,10 +31,10 @@ def test_theater_data_is_valid_uniquely_named_and_never_overlaps():
     theaters = [(f["properties"]["name"], shape(f["geometry"])) for f in features]
     names = [name for name, _ in theaters]
 
-    assert [name for name, area in theaters if not area.is_valid] == []
+    assert [name for name, polygon in theaters if not polygon.is_valid] == []
     assert len(names) == len(set(names))
     assert [
         (a, b)
-        for (a, area_a), (b, area_b) in combinations(theaters, 2)
-        if area_a.intersects(area_b)
+        for (a, polygon_a), (b, polygon_b) in combinations(theaters, 2)
+        if polygon_a.intersects(polygon_b)
     ] == []
