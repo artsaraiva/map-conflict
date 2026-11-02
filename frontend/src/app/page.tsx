@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { fetchMapPoints, fetchEvent, triggerPipeline, fetchStrategicLocations, fetchTheaters } from "@/lib/api";
+import { fetchMapPoints, fetchEvent, fetchStrategicLocations, fetchTheaters } from "@/lib/api";
 import { GeoEvent, MapFilters, MapBounds, DEFAULT_FILTERS } from "@/lib/types";
 import { timeRange, visibleEvents } from "@/lib/map-view";
 import EventPanel from "@/components/panels/EventPanel";
@@ -94,18 +94,12 @@ export default function Home() {
     setSelectedEvent(null);
   }, []);
 
-  // Handle refresh / trigger pipeline
+  // Refetch the map; the worker runs the Feeds on its own schedule
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await triggerPipeline();
-      // Wait a bit for pipeline to process, then refetch
-      setTimeout(async () => {
-        await refetchPoints();
-        setIsRefreshing(false);
-      }, 5000);
-    } catch (err) {
-      console.error("Failed to trigger pipeline:", err);
+      await refetchPoints();
+    } finally {
       setIsRefreshing(false);
     }
   }, [refetchPoints]);

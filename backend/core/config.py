@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     )
     redis_url: str = "redis://localhost:6379/0"
     openai_api_key: str = ""
+    # Shared secret for POST /api/pipeline/trigger; empty turns the endpoint off
+    pipeline_trigger_secret: str = ""
 
     # Scraping config
     scrape_interval_minutes: int = 15

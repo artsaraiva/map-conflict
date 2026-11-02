@@ -89,3 +89,7 @@ Open http://localhost:3001
 Copy `.env.example` to `.env` and fill in:
 - `OPENAI_API_KEY` - for article classification/summarization
 - `NEXT_PUBLIC_MAPTILER_API_KEY` - for map tiles (free tier at maptiler.com)
+- `PIPELINE_TRIGGER_SECRET` - optional. Turns on `POST /api/pipeline/trigger`, which runs Feeds on demand; send it in the `X-Pipeline-Secret` header. Left empty, the endpoint answers 403 and Feeds run only on the worker's schedule:
+  ```bash
+  curl -X POST -H "X-Pipeline-Secret: $PIPELINE_TRIGGER_SECRET" "http://localhost:8000/api/pipeline/trigger?feed=rss"
+  ```

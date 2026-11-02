@@ -82,11 +82,3 @@ export async function fetchEventLinks(eventId: number): Promise<EventLink[]> {
   if (!res.ok) return [];
   return res.json();
 }
-
-export async function triggerPipeline(): Promise<{ status: string }> {
-  const res = await fetch(`${API_URL}/api/pipeline/trigger`, {
-    method: "POST",
-  });
-  if (!res.ok) throw new Error("Failed to trigger pipeline");
-  return res.json();
-}
