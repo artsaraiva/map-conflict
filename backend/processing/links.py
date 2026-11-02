@@ -48,7 +48,7 @@ async def _candidates(session: AsyncSession, event: Event) -> list[Event]:
     # shortcut: distance is checked in Python over every Event in the window; move it into SQL if that gets slow
     nearby = [
         e for e in earlier
-        if _distance_km(event.latitude, event.longitude, e.latitude, e.longitude) <= CANDIDATE_RADIUS_KM
+        if distance_km(event.latitude, event.longitude, e.latitude, e.longitude) <= CANDIDATE_RADIUS_KM
     ]
     text = _text(event)
     nearby.sort(key=lambda e: text_similarity(text, _text(e)), reverse=True)
@@ -59,7 +59,7 @@ def _text(event: Event) -> str:
     return f"{event.title} {event.summary or ''}"
 
 
-def _distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+def distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Great-circle (haversine) distance."""
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     a = (math.sin((phi2 - phi1) / 2) ** 2
