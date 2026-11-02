@@ -97,7 +97,7 @@ describe("density cells", () => {
     expect(shadeOf(placed({ article_count: 30 }))).toBe(shadeOf(placed({ article_count: 1 })));
   });
 
-  it("shades a null Source count like a count of 1", () => {
+  it("shades unknown Corroboration like one Source", () => {
     expect(shadeOf(placed({ source_count: null }))).toBe(shadeOf(placed({ source_count: 1 })));
   });
 });

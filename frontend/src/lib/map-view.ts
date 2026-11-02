@@ -52,7 +52,7 @@ export interface DensityCell {
 
 /**
  * Events grouped by 0.5° cell and visual family. Each Event shades its cell by its
- * Severity weight plus its Corroboration (Source count, capped), never its Report count.
+ * Severity weight plus its Corroboration, capped, never its Report count.
  */
 export function densityCells(events: Placed[]): DensityCell[] {
   const cells = new Map<string, DensityCell>();
