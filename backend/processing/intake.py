@@ -4,9 +4,11 @@ Event intake: turns Reports into Events.
 `ingest` takes a batch of Reports and returns one Outcome per Report, in input
 order. Each Report is processed in its own transaction: the already-seen check,
 classification, geocoding, matching to a recent Event (or creating one),
-Severity, Corroboration and Confidence, Theater, and Links. Classification and
+Severity, Corroboration and Confidence, and Theater. Classification and
 geocoding run in parallel across Feeds; matching onward runs under an advisory
-lock, so concurrent Feeds never create two Events for one occurrence.
+lock, so concurrent Feeds never create two Events for one occurrence. Once a
+created Event is committed, Links to earlier Events are proposed in a second
+transaction, outside the lock.
 """
 
 import logging
@@ -22,11 +24,11 @@ from sqlalchemy.orm import selectinload
 from backend.models.event import (
     Article,
     Event,
-    EventRelationship,
     EventType,
     SeverityLevel,
 )
 from backend.processing.geocoder import GeocodedLocation
+from backend.processing.links import Relate, propose_links
 from backend.processing.nlp import ArticleAnalysis, text_similarity
 from backend.processing.theaters import theater_for
 from backend.scraping.sources import source_key
@@ -72,6 +74,7 @@ async def ingest(
     reports: list[Report],
     classify: Classify,
     geocode: Geocode,
+    relate: Relate,
     session_factory: async_sessionmaker[AsyncSession],
 ) -> list[Outcome]:
     """Process each Report in its own transaction; a failing Report gives `failed` and the batch goes on."""
@@ -79,11 +82,26 @@ async def ingest(
     for report in reports:
         try:
             async with session_factory() as session, session.begin():
-                outcomes.append(await _ingest_one(session, report, classify, geocode))
+                outcome = await _ingest_one(session, report, classify, geocode)
         except Exception as e:
             logger.error(f"Error processing Report '{report.title}': {e}")
             outcomes.append(Outcome("failed", error=e))
+            continue
+        outcomes.append(outcome)
+        if outcome.kind == "created":
+            await _propose_links(outcome.event, relate, session_factory)
     return outcomes
+
+
+async def _propose_links(
+    event: Event, relate: Relate, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Propose Links for a committed Event; a failure is logged and the Event keeps no Links."""
+    try:
+        async with session_factory() as session, session.begin():
+            await propose_links(session, event, relate)
+    except Exception:
+        logger.exception(f"Proposing Links failed for Event '{event.title}'")
 
 
 async def _refresh_corroboration(session: AsyncSession, event: Event) -> None:
@@ -102,61 +120,6 @@ def _compute_confidence(source_count: int) -> float:
     more independent sources yield full confidence.
     """
     return round(min(source_count / 5.0, 1.0), 2)
-
-
-async def _link_related_events(
-    session: AsyncSession,
-    new_event: Event,
-    article_text: str,
-    threshold: float = 0.35,
-) -> None:
-    """
-    Compare a newly created event against recent events and insert bidirectional
-    EventRelationship rows for any pair with similarity >= threshold.
-    Skips pairs that are already linked.
-    """
-    cutoff = datetime.utcnow() - timedelta(hours=DEDUP_WINDOW_HOURS * 4)  # wider window for relations
-
-    result = await session.execute(
-        select(Event)
-        .options(selectinload(Event.articles))
-        .where(Event.created_at >= cutoff)
-        .where(Event.id != new_event.id)
-    )
-    candidates = result.scalars().all()
-
-    for candidate in candidates:
-        for existing_article in candidate.articles:
-            existing_text = existing_article.summary or existing_article.title or ""
-            score = text_similarity(article_text, existing_text)
-            if score < threshold:
-                continue
-
-            # Avoid duplicate constraint — check both directions
-            existing = await session.execute(
-                select(EventRelationship).where(
-                    EventRelationship.source_event_id == new_event.id,
-                    EventRelationship.target_event_id == candidate.id,
-                )
-            )
-            if existing.scalar_one_or_none() is not None:
-                break
-
-            session.add(EventRelationship(
-                source_event_id=new_event.id,
-                target_event_id=candidate.id,
-                relation_type="similar",
-                similarity_score=round(score, 3),
-                created_at=datetime.utcnow(),
-            ))
-            session.add(EventRelationship(
-                source_event_id=candidate.id,
-                target_event_id=new_event.id,
-                relation_type="similar",
-                similarity_score=round(score, 3),
-                created_at=datetime.utcnow(),
-            ))
-            break  # one match per candidate is enough
 
 
 # ── Similarity thresholds for cross-channel deduplication ────────────────────
@@ -338,9 +301,6 @@ async def _ingest_one(
     # Create article linked to event
     _store_report(session, report, summary, event.id)
     await _refresh_corroboration(session, event)
-
-    # Build semantic relationships with other recent events
-    await _link_related_events(session, event, article_text)
 
     logger.info(
         f"Created new Event: {event.title} at {geo.name} ({geo.latitude}, {geo.longitude})"
