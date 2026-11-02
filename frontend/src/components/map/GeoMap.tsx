@@ -13,6 +13,7 @@ import {
   SeverityLevel,
   getEventVisualFamily,
   getSeverityWeight,
+  severityRank,
 } from "@/lib/types";
 import { densityCells, densityOpacity } from "@/lib/map-view";
 import {
@@ -41,7 +42,7 @@ interface EventPointProps {
   id: number;
   title: string;
   event_type: EventType;
-  severity: string;
+  severity: SeverityLevel;
   family: string;
   location_name: string;
   article_count: number;
@@ -60,7 +61,7 @@ interface ClusterAggProps {
   // Sum of severity weights (used to size the cluster circle)
   totalWeight: number;
   // Highest severity level name
-  maxSeverity: string;
+  maxSeverity: SeverityLevel;
 }
 
 const zoomBreakpoints = {
@@ -254,16 +255,13 @@ export default function GeoMap({
       // Map: extract cluster-relevant props from each point
       map: (props) => ({
         color: props.color,
-        totalWeight: getSeverityWeight(props.severity as EventMapPoint["severity"]),
+        totalWeight: getSeverityWeight(props.severity),
         maxSeverity: props.severity,
       }),
       // Reduce: merge two clusters — keep the higher severity color and sum weights
       reduce: (accumulated, props) => {
         accumulated.totalWeight += props.totalWeight;
-        if (
-          (SEVERITY_CONFIG[props.maxSeverity as SeverityLevel]?.rank ?? 0) >
-          (SEVERITY_CONFIG[accumulated.maxSeverity as SeverityLevel]?.rank ?? 0)
-        ) {
+        if (severityRank(props.maxSeverity) > severityRank(accumulated.maxSeverity)) {
           accumulated.maxSeverity = props.maxSeverity;
           accumulated.color = props.color;
         }

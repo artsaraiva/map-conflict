@@ -285,3 +285,7 @@ export function getEventVisualFamily(eventType: EventType): EventVisualFamily {
 export function getSeverityWeight(severity: SeverityLevel): number {
   return SEVERITY_CONFIG[severity]?.weight ?? SEVERITY_CONFIG.low.weight;
 }
+
+export function severityRank(severity: SeverityLevel): number {
+  return SEVERITY_CONFIG[severity]?.rank ?? SEVERITY_CONFIG.low.rank;
+}
