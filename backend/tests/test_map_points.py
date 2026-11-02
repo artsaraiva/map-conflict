@@ -1,6 +1,6 @@
 """Map points: which Events the map shows, and what each point says about its Reports."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -118,3 +118,13 @@ async def test_points_are_newest_first(session):
     await add_event(session, "oldest", hours_ago=10)
 
     assert titles(await map_points(session, since_hours=72)) == ["newest", "middle", "oldest"]
+
+
+async def test_point_time_is_sent_as_utc(session):
+    event = await add_event(session, "strike", hours_ago=3)
+
+    [point] = await map_points(session, since_hours=72)
+    sent = point.model_dump(mode="json")["created_at"]
+
+    assert sent.endswith(("Z", "+00:00"))
+    assert datetime.fromisoformat(sent) == event.created_at.replace(tzinfo=timezone.utc)

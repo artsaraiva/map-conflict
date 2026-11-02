@@ -1,6 +1,11 @@
-from pydantic import BaseModel
-from datetime import datetime
-from typing import Optional
+from pydantic import AfterValidator, BaseModel
+from datetime import datetime, timezone
+from typing import Annotated, Optional
+
+# The columns are naive and hold UTC; mark them so clients don't read them as local time.
+UtcDatetime = Annotated[
+    datetime, AfterValidator(lambda v: v if v.tzinfo else v.replace(tzinfo=timezone.utc))
+]
 
 
 class ArticleResponse(BaseModel):
@@ -12,7 +17,7 @@ class ArticleResponse(BaseModel):
     summary: Optional[str] = None
     image_url: Optional[str] = None
     video_url: Optional[str] = None
-    published_at: Optional[datetime] = None
+    published_at: Optional[UtcDatetime] = None
 
     class Config:
         from_attributes = True
@@ -28,7 +33,7 @@ class EventResponse(BaseModel):
     latitude: float
     longitude: float
     countries: Optional[str] = None
-    created_at: datetime
+    created_at: UtcDatetime
     confidence_score: Optional[float] = None
     source_count: Optional[int] = None
     theater: Optional[str] = None
@@ -51,7 +56,7 @@ class EventMapPoint(BaseModel):
     article_count: int
     image_url: Optional[str] = None
     sources: list[str] = []
-    created_at: datetime
+    created_at: UtcDatetime
     confidence_score: Optional[float] = None
     source_count: Optional[int] = None
     theater: Optional[str] = None
@@ -72,6 +77,6 @@ class RelatedEventResponse(BaseModel):
     longitude: float
     theater: Optional[str] = None
     confidence_score: Optional[float] = None
-    created_at: datetime
+    created_at: UtcDatetime
     relation_type: str
     similarity_score: Optional[float] = None

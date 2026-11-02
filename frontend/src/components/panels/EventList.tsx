@@ -13,6 +13,7 @@ import {
   ALL_EVENT_TYPES,
   ALL_SEVERITIES,
   KNOWN_THEATERS,
+  severityRank,
 } from "@/lib/types";
 import { formatTimeAgo, isTelegramChannel, getSourceLabel } from "@/lib/utils";
 import clsx from "clsx";
@@ -73,10 +74,8 @@ export default function EventList({
 
   // Sort by severity (critical first) then by date
   const sortedEvents = [...events].sort((a, b) => {
-    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-    const aSev = severityOrder[a.severity] ?? 4;
-    const bSev = severityOrder[b.severity] ?? 4;
-    if (aSev !== bSev) return aSev - bSev;
+    const bySeverity = severityRank(b.severity) - severityRank(a.severity);
+    if (bySeverity !== 0) return bySeverity;
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 

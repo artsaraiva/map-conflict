@@ -10,9 +10,12 @@ import {
   EVENT_TYPE_CONFIG,
   SEVERITY_CONFIG,
   MapBounds,
+  SeverityLevel,
   getEventVisualFamily,
   getSeverityWeight,
+  severityRank,
 } from "@/lib/types";
+import { densityCells, densityOpacity } from "@/lib/map-view";
 import {
   AnimatedVehicle,
   createAnimatedVehicles,
@@ -34,23 +37,17 @@ interface GeoMapProps {
   strategicHotspots?: GeoJSON.FeatureCollection;
 }
 
-type HotspotFeature = GeoJSON.Feature<
-  GeoJSON.Point,
-  Record<string, number | string>
->;
-
 // ─── Event point properties stored in Supercluster ───
 interface EventPointProps {
   id: number;
   title: string;
   event_type: EventType;
-  severity: string;
+  severity: SeverityLevel;
   family: string;
   location_name: string;
   article_count: number;
   color: string;
   pulseColor: string;
-  hotspotColor: string;
   size: number;
   pulseSize: number;
   signalOpacity: number;
@@ -64,7 +61,7 @@ interface ClusterAggProps {
   // Sum of severity weights (used to size the cluster circle)
   totalWeight: number;
   // Highest severity level name
-  maxSeverity: string;
+  maxSeverity: SeverityLevel;
 }
 
 const zoomBreakpoints = {
@@ -79,65 +76,6 @@ const CLUSTER_MAX_ZOOM = 12; // stop clustering above this zoom
 // ─── Throttle constants ───
 const VEHICLE_UPDATE_INTERVAL = 3; // ~20fps
 const PAINT_UPDATE_INTERVAL = 2; // ~30fps
-
-// ─── Severity ordering for cluster aggregation ───
-const SEVERITY_ORDER: Record<string, number> = {
-  low: 0,
-  medium: 1,
-  high: 2,
-  critical: 3,
-};
-
-// ─── Tactical arc helpers ───
-
-/** Approximate straight-line distance in km between two lat/lng points. */
-function haversineKm(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number
-): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-/**
- * Generate intermediate coordinates for a quadratic Bezier arc between two
- * geographic points. The control point is offset perpendicularly to the
- * midpoint, producing a gentle curve.
- */
-function curvedArcPoints(
-  from: [number, number],
-  to: [number, number],
-  curvature = 0.28,
-  steps = 10
-): [number, number][] {
-  const midLng = (from[0] + to[0]) / 2;
-  const midLat = (from[1] + to[1]) / 2;
-  const dLng = to[0] - from[0];
-  const dLat = to[1] - from[1];
-  const dist = Math.sqrt(dLng * dLng + dLat * dLat) || 1;
-  // Perpendicular offset
-  const ctrlLng = midLng + (-dLat / dist) * dist * curvature;
-  const ctrlLat = midLat + (dLng / dist) * dist * curvature;
-
-  const pts: [number, number][] = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    pts.push([
-      (1 - t) * (1 - t) * from[0] + 2 * (1 - t) * t * ctrlLng + t * t * to[0],
-      (1 - t) * (1 - t) * from[1] + 2 * (1 - t) * t * ctrlLat + t * t * to[1],
-    ]);
-  }
-  return pts;
-}
 
 // ─── Main animation loop (runs outside React lifecycle) ───
 
@@ -185,16 +123,15 @@ function startMainAnimation(
           ]);
         }
 
-        if (m.getLayer("hotspot-core")) {
-          m.setPaintProperty("hotspot-core", "circle-opacity", [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            1.5,
-            0.22 + Math.sin(phase * Math.PI) * 0.04,
-            zoomBreakpoints.regionalMax,
-            0.08,
-          ]);
+        if (m.getLayer("density-core")) {
+          m.setPaintProperty(
+            "density-core",
+            "circle-opacity",
+            densityOpacity([
+              [1.5, 0.22 + Math.sin(phase * Math.PI) * 0.04],
+              [zoomBreakpoints.regionalMax, 0.08],
+            ])
+          );
         }
 
         // ─── Expanding impact ring (high/critical events) ───
@@ -216,11 +153,6 @@ function startMainAnimation(
           m.setPaintProperty("impact-rings", "circle-stroke-opacity", ringOpacity);
         }
 
-        // ─── Tactical arc opacity pulse ───
-        if (m.getLayer("tactical-arcs")) {
-          const arcOpacity = 0.18 + Math.sin(phase * Math.PI * 2) * 0.13;
-          m.setPaintProperty("tactical-arcs", "line-opacity", arcOpacity);
-        }
       } catch {
         // map removed during animation
       }
@@ -285,7 +217,7 @@ export default function GeoMap({
   // ─── Build supercluster point features from events ───
   const eventPoints = useMemo<Supercluster.PointFeature<EventPointProps>[]>(() => {
     return events.map((event) => {
-      const typeConfig = EVENT_TYPE_CONFIG[event.event_type];
+      const typeConfig = EVENT_TYPE_CONFIG[event.event_type] ?? EVENT_TYPE_CONFIG.other;
       const severityConfig = SEVERITY_CONFIG[event.severity];
       const family = getEventVisualFamily(event.event_type);
 
@@ -303,17 +235,11 @@ export default function GeoMap({
           family,
           location_name: event.location_name,
           article_count: event.article_count,
-          color: typeConfig?.color ?? "#8e97ab",
-          pulseColor: typeConfig?.pulseColor ?? "rgba(142, 151, 171, 0.28)",
-          hotspotColor: typeConfig?.hotspotColor ?? "rgba(142, 151, 171, 0.16)",
+          color: typeConfig.color,
+          pulseColor: typeConfig.pulseColor,
           size: severityConfig?.size ?? 12,
           pulseSize: severityConfig?.pulseSize ?? 30,
-          signalOpacity:
-            event.severity === "critical"
-              ? 1
-              : event.severity === "high"
-                ? 0.9
-                : 0.72,
+          signalOpacity: severityConfig?.opacity ?? 0.72,
           iconImage: `event-icon-${event.event_type}`,
         },
       };
@@ -329,16 +255,13 @@ export default function GeoMap({
       // Map: extract cluster-relevant props from each point
       map: (props) => ({
         color: props.color,
-        totalWeight: getSeverityWeight(props.severity as EventMapPoint["severity"]),
+        totalWeight: getSeverityWeight(props.severity),
         maxSeverity: props.severity,
       }),
       // Reduce: merge two clusters — keep the higher severity color and sum weights
       reduce: (accumulated, props) => {
         accumulated.totalWeight += props.totalWeight;
-        if (
-          (SEVERITY_ORDER[props.maxSeverity] ?? 0) >
-          (SEVERITY_ORDER[accumulated.maxSeverity] ?? 0)
-        ) {
+        if (severityRank(props.maxSeverity) > severityRank(accumulated.maxSeverity)) {
           accumulated.maxSeverity = props.maxSeverity;
           accumulated.color = props.color;
         }
@@ -353,114 +276,17 @@ export default function GeoMap({
     }
   }, [eventPoints]);
 
-  const hotspotGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
-    const grouped = new Map<string, HotspotFeature>();
-
-    for (const event of events) {
-      const roundedLat = Math.round(event.latitude * 2) / 2;
-      const roundedLng = Math.round(event.longitude * 2) / 2;
-      const family = getEventVisualFamily(event.event_type);
-      const key = `${roundedLat}:${roundedLng}:${family}`;
-      const typeConfig = EVENT_TYPE_CONFIG[event.event_type];
-      const severityWeight = getSeverityWeight(event.severity);
-      const articleBoost = Math.min(event.article_count * 0.05, 0.18);
-      const influence = severityWeight + articleBoost;
-
-      const existing = grouped.get(key);
-      if (existing) {
-        existing.properties.intensity =
-          Number(existing.properties.intensity) + influence;
-        existing.properties.count = Number(existing.properties.count) + 1;
-        existing.properties.radius = Math.min(
-          Number(existing.properties.radius) + severityWeight * 10,
-          90
-        );
-        continue;
-      }
-
-      grouped.set(key, {
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [roundedLng, roundedLat],
-        },
-        properties: {
-          key,
-          family,
-          count: 1,
-          intensity: influence,
-          radius: 26 + severityWeight * 32,
-          color: typeConfig?.color ?? "#8e97ab",
-          hotspotColor:
-            typeConfig?.hotspotColor ?? "rgba(142, 151, 171, 0.16)",
-        },
-      });
-    }
-
-    return {
+  const densityGeoJSON = useMemo<GeoJSON.FeatureCollection>(
+    () => ({
       type: "FeatureCollection",
-      features: [...grouped.values()],
-    };
-  }, [events]);
-
-  // ─── Tactical arcs: curved dashed lines between nearby same-theater high-severity events ───
-  const tacticalArcsGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
-    const CONFLICT_FAMILIES = new Set([
-      "conflict",
-      "military_movement",
-      "airstrike",
-      "maritime_incident",
-      "naval_blockade",
-    ]);
-    const HIGH_SEVERITY = new Set(["critical", "high"]);
-    const MAX_DISTANCE_KM = 1200;
-    const MAX_ARCS = 40;
-
-    const seeds = events.filter(
-      (e) => CONFLICT_FAMILIES.has(e.event_type) && HIGH_SEVERITY.has(e.severity)
-    );
-
-    const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
-    const seen = new Set<string>();
-
-    for (let i = 0; i < seeds.length && features.length < MAX_ARCS; i++) {
-      const a = seeds[i];
-      for (let j = i + 1; j < seeds.length && features.length < MAX_ARCS; j++) {
-        const b = seeds[j];
-        // Only connect events in the same theater (skip if both have mismatched theaters)
-        if (a.theater && b.theater && a.theater !== b.theater) continue;
-
-        const key = `${Math.min(a.id, b.id)}-${Math.max(a.id, b.id)}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        const dist = haversineKm(a.latitude, a.longitude, b.latitude, b.longitude);
-        if (dist < 60 || dist > MAX_DISTANCE_KM) continue;
-
-        // Curvature scales gently with distance
-        const curvature = Math.min(0.45, dist / 3500);
-        const coords = curvedArcPoints(
-          [a.longitude, a.latitude],
-          [b.longitude, b.latitude],
-          curvature
-        );
-
-        features.push({
-          type: "Feature",
-          geometry: { type: "LineString", coordinates: coords },
-          properties: {
-            severity:
-              a.severity === "critical" || b.severity === "critical"
-                ? "critical"
-                : "high",
-            theater: a.theater ?? b.theater ?? "",
-          },
-        });
-      }
-    }
-
-    return { type: "FeatureCollection", features };
-  }, [events]);
+      features: densityCells(events).map(({ latitude, longitude, ...properties }) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [longitude, latitude] },
+        properties,
+      })),
+    }),
+    [events]
+  );
 
   // ─── Map initialization (runs ONCE) ───
   useEffect(() => {
@@ -536,7 +362,7 @@ export default function GeoMap({
         data: { type: "FeatureCollection", features: [] },
       });
 
-      m.addSource("hotspots", {
+      m.addSource("density", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
@@ -598,46 +424,11 @@ export default function GeoMap({
         },
       });
 
-      // ─── Tactical arc layers (animated curved connection lines between nearby high-severity events) ───
-      m.addSource("tactical-arcs", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
-      });
-
+      // ─── Density layers ───
       m.addLayer({
-        id: "tactical-arcs",
-        type: "line",
-        source: "tactical-arcs",
-        maxzoom: 7,
-        paint: {
-          "line-color": [
-            "match",
-            ["get", "severity"],
-            "critical",
-            "rgba(255, 72, 72, 0.55)",
-            "rgba(255, 150, 50, 0.42)",
-          ],
-          "line-width": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            1,
-            0.7,
-            4,
-            1.1,
-            7,
-            1.5,
-          ],
-          "line-dasharray": [2, 4],
-          "line-opacity": 0.3,
-        },
-      });
-
-      // ─── Hotspot layers ───
-      m.addLayer({
-        id: "hotspot-wash",
+        id: "density-wash",
         type: "circle",
-        source: "hotspots",
+        source: "density",
         paint: {
           "circle-radius": [
             "interpolate",
@@ -649,25 +440,19 @@ export default function GeoMap({
             ["*", ["get", "radius"], 0.7],
           ],
           "circle-color": ["get", "color"],
-          "circle-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            1.5,
-            0.18,
-            4.5,
-            0.12,
-            7.5,
-            0.03,
-          ],
+          "circle-opacity": densityOpacity([
+            [1.5, 0.18],
+            [4.5, 0.12],
+            [7.5, 0.03],
+          ]),
           "circle-blur": 1,
         },
       });
 
       m.addLayer({
-        id: "hotspot-core",
+        id: "density-core",
         type: "circle",
-        source: "hotspots",
+        source: "density",
         paint: {
           "circle-radius": [
             "interpolate",
@@ -681,17 +466,11 @@ export default function GeoMap({
             6,
           ],
           "circle-color": ["get", "color"],
-          "circle-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            1.5,
-            0.24,
-            4.5,
-            0.16,
-            8,
-            0.05,
-          ],
+          "circle-opacity": densityOpacity([
+            [1.5, 0.24],
+            [4.5, 0.16],
+            [8, 0.05],
+          ]),
           "circle-blur": 0.6,
         },
       });
@@ -1195,14 +974,14 @@ export default function GeoMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Reactive hotspot updates ───
+  // ─── Reactive density updates ───
   useEffect(() => {
     if (!map.current) return;
     const source = map.current.getSource(
-      "hotspots"
+      "density"
     ) as maplibregl.GeoJSONSource | undefined;
-    source?.setData(hotspotGeoJSON);
-  }, [hotspotGeoJSON]);
+    source?.setData(densityGeoJSON);
+  }, [densityGeoJSON]);
 
   // ─── Reactive strategic locations updates ───
   useEffect(() => {
@@ -1212,15 +991,6 @@ export default function GeoMap({
     ) as maplibregl.GeoJSONSource | undefined;
     source?.setData(strategicHotspots);
   }, [strategicHotspots]);
-
-  // ─── Reactive tactical arc updates ───
-  useEffect(() => {
-    if (!map.current) return;
-    const source = map.current.getSource(
-      "tactical-arcs"
-    ) as maplibregl.GeoJSONSource | undefined;
-    source?.setData(tacticalArcsGeoJSON);
-  }, [tacticalArcsGeoJSON]);
 
   return (
     <div ref={mapContainer} className="absolute inset-0 h-full w-full" />
