@@ -98,6 +98,31 @@ async def test_matching_report_from_another_source_corroborates_the_same_event(s
     assert second.event.confidence_score == 0.4
 
 
+async def test_matching_report_far_from_the_event_starts_its_own_event(session_factory):
+    classify = FakeClassifier(hodeidah=geopolitical(location="Hodeidah"), jizan=geopolitical(location="Jizan"))
+    places = {"Hodeidah": (14.8, 42.95), "Jizan": (16.9, 42.55)}  # about 237 km apart
+
+    async def geocode_place(name):
+        return GeocodedLocation(name, *places[name])
+
+    [first] = await ingest([report("hodeidah")], classify, geocode_place, relate_nothing, session_factory)
+    [second] = await ingest([report("jizan", source="reuters.com")], classify, geocode_place, relate_nothing,
+                            session_factory)
+
+    assert (first.kind, second.kind) == ("created", "created")
+
+
+async def test_matching_report_published_long_before_the_event_starts_its_own_event(session_factory):
+    classify = FakeClassifier(today=geopolitical(), yesterday=geopolitical())
+    old = report("yesterday", source="reuters.com")
+    old.published_at = datetime.utcnow() - timedelta(hours=20)
+
+    [first] = await ingest([report("today")], classify, geocode, relate_nothing, session_factory)
+    [second] = await ingest([old], classify, geocode, relate_nothing, session_factory)
+
+    assert (first.kind, second.kind) == ("created", "created")
+
+
 async def test_repeated_url_is_already_seen_without_classifying(session_factory):
     classify = FakeClassifier(strike=geopolitical())
     await ingest([report("strike")], classify, geocode, relate_nothing, session_factory)

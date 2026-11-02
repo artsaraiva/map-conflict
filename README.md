@@ -15,7 +15,7 @@ cp .env.example .env
 
 Fill in:
 - `OPENAI_API_KEY` - for article classification/summarization
-- `NEXT_PUBLIC_MAPTILER_API_KEY` - for map tiles
+- `NEXT_PUBLIC_MAPTILER_API_KEY` or `NEXT_PUBLIC_CARTO_API_KEY` - for map tiles (optional; without either, OpenFreeMap is used)
 
 ### 2. Start the full stack
 ```bash
@@ -42,18 +42,18 @@ Postgres and Redis are published on `127.0.0.1` only.
 
 ### 1. Start infrastructure
 ```bash
-docker compose up -d
+docker compose up -d postgres redis
 ```
 
 ### 2. Start backend
-Run these from the repository root:
+Run from the repo root; imports start with `backend.`.
 ```bash
 python -m venv backend/.venv
 source backend/.venv/bin/activate
 pip install -r backend/requirements.txt
 python -m spacy download en_core_web_sm
 
-# Run migrations
+# Build or upgrade the schema (same as the Docker backend does)
 alembic -c backend/alembic.ini upgrade head
 
 # Start API server
@@ -91,6 +91,7 @@ Open http://localhost:3001
 Copy `.env.example` to `.env` and fill in:
 - `OPENAI_API_KEY` - for article classification/summarization
 - `NEXT_PUBLIC_MAPTILER_API_KEY` - for map tiles (free tier at maptiler.com)
+- `NEXT_PUBLIC_CARTO_API_KEY` - map tiles when no MapTiler key is set (free key at carto.com/basemaps/apikey)
 - `PIPELINE_TRIGGER_SECRET` - optional. Turns on `POST /api/pipeline/trigger`, which runs Feeds on demand; send it in the `X-Pipeline-Secret` header. Left empty, the endpoint answers 403 and Feeds run only on the worker's schedule:
   ```bash
   curl -X POST -H "X-Pipeline-Secret: $PIPELINE_TRIGGER_SECRET" "http://localhost:8000/api/pipeline/trigger?feed=rss"

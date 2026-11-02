@@ -28,7 +28,7 @@ from backend.models.event import (
     SeverityLevel,
 )
 from backend.processing.geocoder import GeocodedLocation
-from backend.processing.links import Relate, propose_links
+from backend.processing.links import Relate, distance_km, propose_links
 from backend.processing.nlp import ArticleAnalysis, text_similarity
 from backend.processing.theaters import theater_for
 from backend.scraping.sources import source_key
@@ -129,6 +129,10 @@ SIMILARITY_THRESHOLD_SAME_TYPE = 0.5
 SIMILARITY_THRESHOLD_ANY_TYPE = 0.7
 # Only consider events created in the last N hours for merging
 DEDUP_WINDOW_HOURS = 6
+# A Report merges only into an Event this close in place and time; one Event is one occurrence.
+# ponytail: fixed thresholds; 100 km absorbs city-vs-province geocodes, tune if separate strikes still merge
+MERGE_RADIUS_KM = 100
+MERGE_TIME_WINDOW = timedelta(hours=6)
 
 # Advisory lock key that serializes match-or-create across concurrent Feeds
 _INTAKE_LOCK_KEY = 1801
@@ -141,10 +145,13 @@ async def _article_exists(session: AsyncSession, url: str) -> bool:
 
 
 async def _find_similar_event(
-    session: AsyncSession, article_text: str, event_type: str
+    session: AsyncSession, article_text: str, event_type: str, geo: GeocodedLocation, reported_at: datetime
 ) -> Event | None:
     """
-    Find a recent event whose articles are textually similar to the new article.
+    Find a recent Event near the Report in place and time whose Reports are textually similar to it.
+
+    Only Events within MERGE_RADIUS_KM of the Report's location, and created within
+    MERGE_TIME_WINDOW of `reported_at`, are compared.
 
     Uses Jaccard word-overlap similarity across all articles belonging to each
     recent event.  Two thresholds:
@@ -166,6 +173,10 @@ async def _find_similar_event(
     best_score: float = 0.0
 
     for event in recent_events:
+        if distance_km(geo.latitude, geo.longitude, event.latitude, event.longitude) > MERGE_RADIUS_KM:
+            continue
+        if event.created_at and abs(reported_at - event.created_at) > MERGE_TIME_WINDOW:
+            continue
         # Compare new article text against each article in this event
         for existing_article in event.articles:
             existing_text = existing_article.summary or existing_article.title or ""
@@ -265,7 +276,8 @@ async def _ingest_one(
 
     # Check for existing similar event (fuzzy cross-channel deduplication)
     article_text = report.description or report.title
-    existing_event = await _find_similar_event(session, article_text, event_type.value)
+    reported_at = report.published_at or datetime.utcnow()
+    existing_event = await _find_similar_event(session, article_text, event_type.value, geo, reported_at)
 
     if existing_event:
         # Add article to existing event
