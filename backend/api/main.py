@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 
 from backend.api.events import router as events_router
+from backend.processing.theaters import theater_names
 
 app = FastAPI(
     title="Geopolitics Map API",
@@ -40,6 +41,11 @@ async def get_strategic_hotspots():
         data = json.load(f)
     return JSONResponse(data)
 
+
+@app.get("/api/theaters", response_model=list[str])
+async def get_theaters():
+    """The Theater names, in file order."""
+    return theater_names()
 
 
 # The media directory is shared between the worker (downloads) and backend
