@@ -73,10 +73,9 @@ export default function EventList({
 
   // Sort by severity (critical first) then by date
   const sortedEvents = [...events].sort((a, b) => {
-    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-    const aSev = severityOrder[a.severity] ?? 4;
-    const bSev = severityOrder[b.severity] ?? 4;
-    if (aSev !== bSev) return aSev - bSev;
+    const bySeverity =
+      (SEVERITY_CONFIG[b.severity]?.rank ?? -1) - (SEVERITY_CONFIG[a.severity]?.rank ?? -1);
+    if (bySeverity !== 0) return bySeverity;
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
