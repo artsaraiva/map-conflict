@@ -12,6 +12,9 @@ __pycache__/
 # Cache
 .ruff_cache/
 
+# Playwright MCP screenshots and console logs
+.playwright-mcp/
+
 # IDE
 .vscode/
 .idea/
