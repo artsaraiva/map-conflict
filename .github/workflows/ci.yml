@@ -54,6 +54,8 @@ jobs:
       - run: npm ci
       - name: Typecheck
         run: npx tsc --noEmit
+      - name: Tests
+        run: npm test
       # ponytail: non-blocking until the 2 existing react-hooks/set-state-in-effect errors are fixed; then drop continue-on-error
       - name: Lint
         run: npm run lint
