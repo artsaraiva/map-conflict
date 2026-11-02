@@ -15,7 +15,6 @@ from typing import Optional
 import logging
 
 from backend.processing.intake import Report
-from backend.scraping.sources import source_key
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +111,7 @@ async def _scrape_gdelt_query(
                 description=title,
                 published_at=_parse_gdelt_date(raw.get("seendate") or ""),
                 image_url=(raw.get("socialimage") or "").strip() or None,
-                source=source_key(raw.get("domain") or url),
+                source=raw.get("domain") or "",  # raw; `ingest` canonicalizes it
             )
         )
 

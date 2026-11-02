@@ -63,7 +63,7 @@ def test_gdelt_reports_carry_their_real_source_and_utc_time():
 
     reports = asyncio.run(fetch())
 
-    assert [r.source for r in reports] == ["bbc.co.uk", "reuters.com"]  # from `domain`; French dropped
+    assert [r.source for r in reports] == ["bbc.com", "reuters.com"]  # raw `domain`; French dropped
     bbc = reports[0]
     assert bbc.image_url == "https://ichef.bbci.co.uk/news/1024/tanker.jpg"
     assert reports[1].image_url is None
