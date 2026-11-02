@@ -288,16 +288,18 @@ async def _ingest_one(
         _store_report(session, report, report.description[:500] if report.description else None)
         return Outcome("not_geopolitical")
 
-    # Geocode the primary location
-    # ponytail: unplaced Reports are not stored yet, so they are re-classified every run (#17)
+    # Unplaced Reports are stored with no Event, so they are never classified again
+    summary = analysis.summary or report.description[:500]
     primary_location = analysis.locations[0] if analysis.locations else None
     if not primary_location:
         logger.debug(f"No location found for: {report.title}")
+        _store_report(session, report, summary)
         return Outcome("unplaced")
 
     geo = await geocode(primary_location)
     if not geo:
         logger.debug(f"Could not geocode: {primary_location}")
+        _store_report(session, report, summary)
         return Outcome("unplaced")
 
     # Map string types to enums
@@ -317,7 +319,7 @@ async def _ingest_one(
 
     if existing_event:
         # Add article to existing event
-        _store_report(session, report, analysis.summary or report.description[:500], existing_event.id)
+        _store_report(session, report, summary, existing_event.id)
 
         # Update event severity if this article suggests higher severity
         severity_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
@@ -334,7 +336,7 @@ async def _ingest_one(
     # Create new event
     event = Event(
         title=report.title,
-        summary=analysis.summary or report.description[:500],
+        summary=summary,
         event_type=event_type,
         severity=severity,
         location_name=geo.name,
@@ -347,7 +349,7 @@ async def _ingest_one(
     await session.flush()  # Get the event ID
 
     # Create article linked to event
-    _store_report(session, report, analysis.summary or report.description[:500], event.id)
+    _store_report(session, report, summary, event.id)
     await _refresh_corroboration(session, event)
 
     # Build semantic relationships with other recent events

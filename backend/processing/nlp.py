@@ -55,8 +55,9 @@ def extract_locations(text: str) -> list[str]:
 
 async def classify_article(title: str, description: str) -> Optional[ArticleAnalysis]:
     """
-    Use OpenAI to classify an article and extract structured data.
-    Returns None if the article is not geopolitically relevant.
+    Use OpenAI to classify a Report and extract structured data.
+    Keyword classification is used only when no OpenAI key is configured; an
+    OpenAI error raises instead of falling back.
     """
     settings = get_settings()
     if not settings.openai_api_key:
@@ -87,34 +88,30 @@ Rules:
 - Severity: critical = active military conflict; high = imminent threat/major diplomatic crisis; medium = ongoing tensions; low = routine political news.
 """
 
-    try:
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=500,
-            response_format={"type": "json_object"},
-        )
+    # An OpenAI error propagates: Event intake leaves the Report unstored, so the next run retries it
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1,
+        max_tokens=500,
+        response_format={"type": "json_object"},
+    )
 
-        result = json.loads(response.choices[0].message.content)
+    result = json.loads(response.choices[0].message.content)
 
-        return ArticleAnalysis(
-            locations=result.get("locations", []),
-            event_type=result.get("event_type", "other"),
-            severity=result.get("severity", "medium"),
-            summary=result.get("summary", ""),
-            countries=result.get("countries", []),
-            is_geopolitical=result.get("is_geopolitical", False),
-        )
-
-    except Exception as e:
-        logger.error(f"OpenAI classification error: {e}")
-        return _fallback_classification(title, description)
+    return ArticleAnalysis(
+        locations=result.get("locations", []),
+        event_type=result.get("event_type", "other"),
+        severity=result.get("severity", "medium"),
+        summary=result.get("summary", ""),
+        countries=result.get("countries", []),
+        is_geopolitical=result.get("is_geopolitical", False),
+    )
 
 
 def _fallback_classification(title: str, description: str) -> ArticleAnalysis:
     """
-    Simple keyword-based fallback when OpenAI is not available.
+    Simple keyword-based classification, used only when no OpenAI key is configured.
     Extracts locations via spaCy and uses keyword matching for type.
     """
     text = f"{title} {description}"

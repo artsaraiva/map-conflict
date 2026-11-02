@@ -30,7 +30,7 @@ class FakeClassifier:
 
 def geopolitical(severity="medium", event_type="conflict", location="Red Sea"):
     return ArticleAnalysis(
-        locations=[location], event_type=event_type, severity=severity,
+        locations=[location] if location else [], event_type=event_type, severity=severity,
         summary="", countries=["YE"], is_geopolitical=True,
     )
 
@@ -95,6 +95,40 @@ async def test_non_geopolitical_report_is_stored_and_seen_next_time(session_fact
     [second] = await ingest([report("football")], classify, geocode, session_factory)
 
     assert (first.kind, second.kind) == ("not_geopolitical", "already_seen")
+
+
+async def test_report_with_no_location_is_unplaced_and_never_classified_again(session_factory):
+    classify = FakeClassifier(vague=geopolitical(location=None))
+
+    [first] = await ingest([report("vague")], classify, geocode, session_factory)
+    [second] = await ingest([report("vague")], classify, geocode, session_factory)
+
+    assert (first.kind, second.kind) == ("unplaced", "already_seen")
+    assert classify.calls == ["vague"]
+
+
+async def test_report_that_fails_to_geocode_is_unplaced_and_never_classified_again(session_factory):
+    classify = FakeClassifier(nowhere=geopolitical(location="Atlantis"))
+
+    async def geocode_nothing(name):
+        return None
+
+    [first] = await ingest([report("nowhere")], classify, geocode_nothing, session_factory)
+    [second] = await ingest([report("nowhere")], classify, geocode_nothing, session_factory)
+
+    assert (first.kind, second.kind) == ("unplaced", "already_seen")
+    assert classify.calls == ["nowhere"]
+
+
+async def test_report_whose_classifier_errors_fails_and_is_classified_again_next_run(session_factory):
+    classify = FakeClassifier(strike=RuntimeError("OpenAI is down"))
+
+    [first] = await ingest([report("strike")], classify, geocode, session_factory)
+    classify.analyses["strike"] = geopolitical()
+    [second] = await ingest([report("strike")], classify, geocode, session_factory)
+
+    assert (first.kind, second.kind) == ("failed", "created")
+    assert classify.calls == ["strike", "strike"]
 
 
 async def test_more_severe_corroborating_report_raises_severity(session_factory):
