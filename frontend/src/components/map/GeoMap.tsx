@@ -13,8 +13,9 @@ import {
   SeverityLevel,
   getEventVisualFamily,
   getSeverityWeight,
+  severityRank,
 } from "@/lib/types";
-import { densityCells } from "@/lib/map-view";
+import { densityCells, densityOpacity } from "@/lib/map-view";
 import {
   AnimatedVehicle,
   createAnimatedVehicles,
@@ -41,13 +42,12 @@ interface EventPointProps {
   id: number;
   title: string;
   event_type: EventType;
-  severity: string;
+  severity: SeverityLevel;
   family: string;
   location_name: string;
   article_count: number;
   color: string;
   pulseColor: string;
-  densityColor: string;
   size: number;
   pulseSize: number;
   signalOpacity: number;
@@ -61,7 +61,7 @@ interface ClusterAggProps {
   // Sum of severity weights (used to size the cluster circle)
   totalWeight: number;
   // Highest severity level name
-  maxSeverity: string;
+  maxSeverity: SeverityLevel;
 }
 
 const zoomBreakpoints = {
@@ -124,15 +124,14 @@ function startMainAnimation(
         }
 
         if (m.getLayer("density-core")) {
-          m.setPaintProperty("density-core", "circle-opacity", [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            1.5,
-            0.22 + Math.sin(phase * Math.PI) * 0.04,
-            zoomBreakpoints.regionalMax,
-            0.08,
-          ]);
+          m.setPaintProperty(
+            "density-core",
+            "circle-opacity",
+            densityOpacity([
+              [1.5, 0.22 + Math.sin(phase * Math.PI) * 0.04],
+              [zoomBreakpoints.regionalMax, 0.08],
+            ])
+          );
         }
 
         // ─── Expanding impact ring (high/critical events) ───
@@ -218,7 +217,7 @@ export default function GeoMap({
   // ─── Build supercluster point features from events ───
   const eventPoints = useMemo<Supercluster.PointFeature<EventPointProps>[]>(() => {
     return events.map((event) => {
-      const typeConfig = EVENT_TYPE_CONFIG[event.event_type];
+      const typeConfig = EVENT_TYPE_CONFIG[event.event_type] ?? EVENT_TYPE_CONFIG.other;
       const severityConfig = SEVERITY_CONFIG[event.severity];
       const family = getEventVisualFamily(event.event_type);
 
@@ -236,9 +235,8 @@ export default function GeoMap({
           family,
           location_name: event.location_name,
           article_count: event.article_count,
-          color: typeConfig?.color ?? "#8e97ab",
-          pulseColor: typeConfig?.pulseColor ?? "rgba(142, 151, 171, 0.28)",
-          densityColor: typeConfig?.densityColor ?? "rgba(142, 151, 171, 0.16)",
+          color: typeConfig.color,
+          pulseColor: typeConfig.pulseColor,
           size: severityConfig?.size ?? 12,
           pulseSize: severityConfig?.pulseSize ?? 30,
           signalOpacity: severityConfig?.opacity ?? 0.72,
@@ -257,16 +255,13 @@ export default function GeoMap({
       // Map: extract cluster-relevant props from each point
       map: (props) => ({
         color: props.color,
-        totalWeight: getSeverityWeight(props.severity as EventMapPoint["severity"]),
+        totalWeight: getSeverityWeight(props.severity),
         maxSeverity: props.severity,
       }),
       // Reduce: merge two clusters — keep the higher severity color and sum weights
       reduce: (accumulated, props) => {
         accumulated.totalWeight += props.totalWeight;
-        if (
-          (SEVERITY_CONFIG[props.maxSeverity as SeverityLevel]?.rank ?? 0) >
-          (SEVERITY_CONFIG[accumulated.maxSeverity as SeverityLevel]?.rank ?? 0)
-        ) {
+        if (severityRank(props.maxSeverity) > severityRank(accumulated.maxSeverity)) {
           accumulated.maxSeverity = props.maxSeverity;
           accumulated.color = props.color;
         }
@@ -445,17 +440,11 @@ export default function GeoMap({
             ["*", ["get", "radius"], 0.7],
           ],
           "circle-color": ["get", "color"],
-          "circle-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            1.5,
-            0.18,
-            4.5,
-            0.12,
-            7.5,
-            0.03,
-          ],
+          "circle-opacity": densityOpacity([
+            [1.5, 0.18],
+            [4.5, 0.12],
+            [7.5, 0.03],
+          ]),
           "circle-blur": 1,
         },
       });
@@ -477,17 +466,11 @@ export default function GeoMap({
             6,
           ],
           "circle-color": ["get", "color"],
-          "circle-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            1.5,
-            0.24,
-            4.5,
-            0.16,
-            8,
-            0.05,
-          ],
+          "circle-opacity": densityOpacity([
+            [1.5, 0.24],
+            [4.5, 0.16],
+            [8, 0.05],
+          ]),
           "circle-blur": 0.6,
         },
       });

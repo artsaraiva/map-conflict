@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { densityCells, timeRange, visibleEvents } from "@/lib/map-view";
-import { SEVERITY_CONFIG } from "@/lib/types";
+import { expression, latest } from "@maplibre/maplibre-gl-style-spec";
+import { densityCells, densityOpacity, timeRange, visibleEvents } from "@/lib/map-view";
+import { EventType, SEVERITY_CONFIG, SeverityLevel } from "@/lib/types";
 
 const event = (id: number, created_at: string) => ({ id, created_at });
 
@@ -57,8 +58,8 @@ const placed = (
   over: Partial<{
     latitude: number;
     longitude: number;
-    event_type: "conflict" | "sanctions" | "military_movement";
-    severity: "low" | "medium" | "high" | "critical";
+    event_type: EventType;
+    severity: SeverityLevel;
     source_count: number | null;
     article_count: number;
   }> = {},
@@ -96,8 +97,40 @@ describe("density cells", () => {
     expect(shadeOf(placed({ article_count: 30 }))).toBe(shadeOf(placed({ article_count: 1 })));
   });
 
-  it("shades a null Source count like a count of 1", () => {
+  it("shades unknown Corroboration like one Source", () => {
     expect(shadeOf(placed({ source_count: null }))).toBe(shadeOf(placed({ source_count: 1 })));
+  });
+});
+
+// Paints a density layer's opacity for a cell the way MapLibre would.
+const paintedOpacity = (cells: ReturnType<typeof densityCells>, zoom: number) => {
+  const parsed = expression.createPropertyExpression(
+    densityOpacity([
+      [1.5, 0.2],
+      [8, 0.05],
+    ]),
+    latest.paint_circle["circle-opacity"],
+  );
+  if (parsed.result !== "success") throw new Error(parsed.value.map((e) => e.message).join("; "));
+  return parsed.value.evaluate({ zoom }, { type: "Point", properties: { ...cells[0] } } as never);
+};
+
+describe("density opacity", () => {
+  it("paints a cell with more Corroboration more strongly", () => {
+    const fewer = densityCells([placed({ source_count: 1 })]);
+    const more = densityCells([placed({ source_count: 4 })]);
+    expect(paintedOpacity(more, 1.5)).toBeGreaterThan(paintedOpacity(fewer, 1.5));
+  });
+
+  it("paints one high Event with one Source at about the layer's opacity", () => {
+    const typical = densityCells([placed({ severity: "high", source_count: 1 })]);
+    expect(paintedOpacity(typical, 1.5)).toBeCloseTo(0.2, 1);
+    expect(paintedOpacity(typical, 8)).toBeCloseTo(0.05, 1);
+  });
+
+  it("paints a crowded cell at no more than twice the layer's opacity", () => {
+    const crowded = densityCells(Array.from({ length: 10 }, () => placed({ severity: "critical", source_count: 9 })));
+    expect(paintedOpacity(crowded, 1.5)).toBeCloseTo(0.4);
   });
 });
 

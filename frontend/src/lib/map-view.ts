@@ -1,6 +1,7 @@
 // Map view: what the map and panels show for a set of Events, a time cursor and
 // the current time. Pure: no React, MapLibre or DOM, and the clock is always an argument.
 
+import type { ExpressionSpecification } from "maplibre-gl";
 import {
   EVENT_TYPE_CONFIG,
   EventMapPoint,
@@ -47,12 +48,11 @@ export interface DensityCell {
   intensity: number;
   radius: number;
   color: string;
-  densityColor: string;
 }
 
 /**
  * Events grouped by 0.5° cell and visual family. Each Event shades its cell by its
- * Severity weight plus its Corroboration (Source count, capped), never its Report count.
+ * Severity weight plus its Corroboration, capped, never its Report count.
  */
 export function densityCells(events: Placed[]): DensityCell[] {
   const cells = new Map<string, DensityCell>();
@@ -73,7 +73,6 @@ export function densityCells(events: Placed[]): DensityCell[] {
       continue;
     }
 
-    const typeConfig = EVENT_TYPE_CONFIG[event.event_type];
     cells.set(key, {
       key,
       family,
@@ -82,10 +81,31 @@ export function densityCells(events: Placed[]): DensityCell[] {
       count: 1,
       intensity: influence,
       radius: 26 + severityWeight * 32,
-      color: typeConfig?.color ?? "#8e97ab",
-      densityColor: typeConfig?.densityColor ?? "rgba(142, 151, 171, 0.16)",
+      color: (EVENT_TYPE_CONFIG[event.event_type] ?? EVENT_TYPE_CONFIG.other).color,
     });
   }
 
   return [...cells.values()];
+}
+
+// One high Event with one Source paints at a density layer's own opacity.
+const TYPICAL_INTENSITY = 0.87;
+const MAX_INTENSITY_SCALE = 2;
+
+/**
+ * A density layer's opacity by zoom, each stop scaled by its cell's intensity so
+ * better-corroborated, more severe cells paint stronger, up to twice the stop.
+ */
+export function densityOpacity(stops: [zoom: number, opacity: number][]): ExpressionSpecification {
+  const scale: ExpressionSpecification = [
+    "min",
+    ["/", ["get", "intensity"], TYPICAL_INTENSITY],
+    MAX_INTENSITY_SCALE,
+  ];
+  return [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    ...stops.flatMap(([zoom, opacity]) => [zoom, ["*", opacity, scale]]),
+  ] as ExpressionSpecification;
 }
