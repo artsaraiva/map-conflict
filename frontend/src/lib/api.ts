@@ -1,4 +1,4 @@
-import { EventMapPoint, GeoEvent, EventListResponse, MapFilters } from "./types";
+import { EventMapPoint, GeoEvent, RelatedEvent, EventListResponse, MapFilters, MapBounds } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -27,7 +27,8 @@ function resolveGeoEvent(event: GeoEvent): GeoEvent {
 }
 
 export async function fetchMapPoints(
-  filters?: Partial<MapFilters>
+  filters?: Partial<MapFilters>,
+  bounds?: MapBounds,
 ): Promise<EventMapPoint[]> {
   const params = new URLSearchParams();
   const sinceHours = filters?.sinceHours ?? 72;
@@ -39,6 +40,15 @@ export async function fetchMapPoints(
   if (filters?.severities && filters.severities.length > 0) {
     params.set("severity", filters.severities.join(","));
   }
+  if (filters?.theaters && filters.theaters.length > 0) {
+    params.set("theater", filters.theaters.join(","));
+  }
+  if (bounds) {
+    params.set("min_lat", bounds.minLat.toString());
+    params.set("max_lat", bounds.maxLat.toString());
+    params.set("min_lng", bounds.minLng.toString());
+    params.set("max_lng", bounds.maxLng.toString());
+  }
 
   const res = await fetch(
     `${API_URL}/api/events/map-points?${params}`
@@ -48,11 +58,23 @@ export async function fetchMapPoints(
   return data.map(resolveMapPoint);
 }
 
+export async function fetchStrategicHotspots(): Promise<GeoJSON.FeatureCollection> {
+  const res = await fetch(`${API_URL}/api/hotspots`);
+  if (!res.ok) throw new Error("Failed to fetch strategic hotspots");
+  return res.json();
+}
+
 export async function fetchEvent(eventId: number): Promise<GeoEvent> {
   const res = await fetch(`${API_URL}/api/events/${eventId}`);
   if (!res.ok) throw new Error("Failed to fetch event");
   const data: GeoEvent = await res.json();
   return resolveGeoEvent(data);
+}
+
+export async function fetchRelatedEvents(eventId: number): Promise<RelatedEvent[]> {
+  const res = await fetch(`${API_URL}/api/events/${eventId}/related?limit=5`);
+  if (!res.ok) return [];
+  return res.json();
 }
 
 export async function fetchEvents(params?: {

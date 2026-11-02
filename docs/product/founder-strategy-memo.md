@@ -25,10 +25,10 @@ The current lag is most likely caused by frontend rendering behavior, especially
 
 The issue is not that MapLibre is the wrong choice. The issue is that the product needs a more disciplined rendering model:
 
-- fewer expensive updates per frame
-- clustering when zoomed out
-- viewport-aware querying
-- clearer zoom-level behavior
+- [x] fewer expensive updates per frame
+- [x] clustering when zoomed out
+- [x] viewport-aware querying
+- [x] clearer zoom-level behavior
 
 ### 2. Telegram alone is not enough
 
@@ -36,19 +36,19 @@ Telegram is useful because it is fast and often closer to the ground than tradit
 
 To become a serious geopolitical platform, the product needs multi-source ingestion:
 
-- Telegram for fast signal
-- RSS / major outlets for structured confirmation
-- X for analyst, journalist, and official account monitoring
-- later, structured feeds like GDELT for broader event coverage
+- [x] Telegram for fast signal
+- [x] RSS / major outlets for structured confirmation
+- [ ] X for analyst, journalist, and official account monitoring (stub ready in `backend/scraping/x_scraper.py` — requires `X_BEARER_TOKEN`)
+- [x] later, structured feeds like GDELT for broader event coverage (implemented: `backend/scraping/gdelt_scraper.py` using GDELT Doc 2.0 API; Celery beat task every 30 min)
 
 ### 3. The product still behaves more like an event map than a strategic surface
 
 Today the product can show incidents. The next step is helping users understand:
 
-- where pressure is building
-- which regions are escalating
-- which events are high-confidence vs noisy
-- how incidents relate across time and geography
+- [x] where pressure is building (hotspot layer + confidence score)
+- [x] which regions are escalating (theater assignment + filter)
+- [x] which events are high-confidence vs noisy (`confidence_score` + `source_count` on every event)
+- [x] how incidents relate across time and geography (implemented: `event_relationships` table, `/api/events/{id}/related` endpoint, Related Events panel in EventPanel with click-to-navigate)
 
 That is the real product leap.
 
@@ -158,17 +158,17 @@ This is a major strategic differentiator.
 
 Priority:
 
-- fix map lag
-- add clustering
-- add viewport-aware event queries
-- simplify or throttle expensive animation updates
+- [x] fix map lag
+- [x] add clustering
+- [x] add viewport-aware event queries
+- [x] simplify or throttle expensive animation updates
 
 Recommended direction:
 
-- stay on `MapLibre`
-- add `supercluster`
-- keep the product in 2D
-- optimize rendering before adding more spectacle
+- [x] stay on `MapLibre`
+- [x] add `supercluster`
+- [x] keep the product in 2D
+- [x] optimize rendering before adding more spectacle
 
 This is the fastest path to a noticeably better product.
 
@@ -247,20 +247,20 @@ The product should feel alive, but never at the cost of clarity or speed.
 
 ### Realistic version
 
-1. Improve map performance in `frontend/src/components/map/GeoMap.tsx`
-2. Add clustering and better zoom-state behavior
-3. Add viewport-aware backend map queries
-4. Expand ingestion to RSS and then X
-5. Add confidence, corroboration, and strategic hotspots
-6. Improve theater-level summaries and filtering
+1. [x] Improve map performance in `frontend/src/components/map/GeoMap.tsx` (implemented: viewport bounds emitted on moveend/zoomend via debounced `onBoundsChange` callback; backend `/map-points` now filters by bbox)
+2. [x] Add clustering and better zoom-state behavior (implemented: Supercluster with `CLUSTER_RADIUS=55`, `CLUSTER_MAX_ZOOM=12`, zoom breakpoints at 3.4/6.8, zoom-interpolated paint and opacity per layer)
+3. [x] Add viewport-aware backend map queries (implemented: `min_lat/max_lat/min_lng/max_lng` params added to `/map-points`; frontend passes current bounds from GeoMap on every viewport change)
+4. [ ] Expand ingestion to RSS and then X (partially implemented: RSS live with 8 feeds + Celery beat every 15 min; X scraper stub created in `backend/scraping/x_scraper.py`, wired into pipeline and worker every 10 min — requires `X_BEARER_TOKEN` env var to activate)
+5. [x] Add confidence, corroboration, and strategic hotspots (implemented: `confidence_score`, `source_count`, `theater` columns added to Event model with Alembic migration `001`; pipeline computes all three on every event create/update; `/api/hotspots` endpoint serves `data/hotspots.geojson`; GeoMap renders a static `strategic-locations` layer with rings + labels)
+6. [x] Improve theater-level summaries and filtering (implemented: theater derived from coordinates on ingest via `_derive_theater()`; `/map-points` accepts `theater` filter param; EventList filter panel has theater chips backed by `KNOWN_THEATERS`)
 
 ### Ambitious version
 
-1. Everything in the realistic version
-2. Add semantic event grouping and stronger relationship modeling
-3. Add replay / timeline features
-4. Add selective animated tactical layers
-5. Add optional advanced map modes later
+1. [x] Everything in the realistic version
+2. [x] Add semantic event grouping and stronger relationship modeling (implemented: `event_relationships` table with bidirectional similarity links built at ingest time; `/api/events/{id}/related` endpoint; EventPanel shows related events with match score, theater, and click-to-navigate)
+3. [x] Add replay / timeline features (implemented: `TimelineSlider` component at bottom-center of map; scrubs through event history up to 48 positions; all map/list/briefing views filter to cursor time)
+4. [x] Add selective animated tactical layers (implemented: `impact-rings` expanding-ring layer on high/critical events + `tactical-arcs` dashed curved arcs between nearby same-theater high-severity events; animated via `startMainAnimation` loop)
+5. [ ] Add optional advanced map modes later
 
 ## Final Recommendation
 

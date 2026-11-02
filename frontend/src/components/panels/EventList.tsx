@@ -12,6 +12,7 @@ import {
   TIME_RANGE_OPTIONS,
   ALL_EVENT_TYPES,
   ALL_SEVERITIES,
+  KNOWN_THEATERS,
 } from "@/lib/types";
 import { formatTimeAgo, isTelegramSource, getSourceLabel } from "@/lib/utils";
 import clsx from "clsx";
@@ -50,7 +51,8 @@ function hasActiveFilters(filters: MapFilters): boolean {
   return (
     filters.eventTypes.length > 0 ||
     filters.severities.length > 0 ||
-    filters.sinceHours !== DEFAULT_FILTERS.sinceHours
+    filters.sinceHours !== DEFAULT_FILTERS.sinceHours ||
+    (filters.theaters?.length ?? 0) > 0
   );
 }
 
@@ -89,6 +91,13 @@ export default function EventList({
     onFiltersChange({
       ...filters,
       severities: toggleInArray(filters.severities, sev),
+    });
+  };
+
+  const toggleTheater = (theater: string) => {
+    onFiltersChange({
+      ...filters,
+      theaters: toggleInArray(filters.theaters ?? [], theater),
     });
   };
 
@@ -266,6 +275,32 @@ export default function EventList({
                       }
                     >
                       {config.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Theater chips */}
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.28em] text-[#5d7078] mb-1.5">
+                Theater
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {KNOWN_THEATERS.map((theater) => {
+                  const isActive = (filters.theaters ?? []).includes(theater);
+                  return (
+                    <button
+                      key={theater}
+                      onClick={() => toggleTheater(theater)}
+                      className={clsx(
+                        "rounded-md px-2 py-0.5 text-[11px] uppercase tracking-wider transition-all border",
+                        isActive
+                          ? "bg-[#1e3040] text-[#9dd0e0] border-[#3a6070]"
+                          : "bg-[#121c22] text-[#6a7e84] border-[#253038] hover:border-[#3a4e56] hover:text-[#94a6aa]"
+                      )}
+                    >
+                      {theater}
                     </button>
                   );
                 })}

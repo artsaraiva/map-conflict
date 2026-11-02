@@ -22,7 +22,25 @@ export interface GeoEvent {
   longitude: number;
   countries: string | null;
   created_at: string;
+  confidence_score: number | null;
+  source_count: number | null;
+  theater: string | null;
   articles: Article[];
+}
+
+export interface RelatedEvent {
+  id: number;
+  title: string;
+  event_type: EventType;
+  severity: SeverityLevel;
+  location_name: string;
+  latitude: number;
+  longitude: number;
+  theater: string | null;
+  confidence_score: number | null;
+  created_at: string;
+  relation_type: string;
+  similarity_score: number | null;
 }
 
 export interface EventMapPoint {
@@ -37,6 +55,9 @@ export interface EventMapPoint {
   image_url: string | null;
   sources: string[];
   created_at: string;
+  confidence_score: number | null;
+  source_count: number | null;
+  theater: string | null;
 }
 
 export type EventType =
@@ -205,17 +226,40 @@ export const VISUAL_FAMILY_CONFIG: Record<
 
 // ─── Filter state ───
 
+export interface MapBounds {
+  minLng: number;
+  minLat: number;
+  maxLng: number;
+  maxLat: number;
+}
+
 export interface MapFilters {
   eventTypes: EventType[];
   severities: SeverityLevel[];
   sinceHours: number;
+  theaters: string[];
 }
 
 export const DEFAULT_FILTERS: MapFilters = {
   eventTypes: [],   // empty = show all
   severities: [],   // empty = show all
   sinceHours: 72,
+  theaters: [],     // empty = show all
 };
+
+export const KNOWN_THEATERS: string[] = [
+  "Eastern Europe",
+  "Middle East",
+  "East Asia",
+  "South Asia",
+  "Central Asia",
+  "North Africa",
+  "Sub-Saharan Africa",
+  "Americas",
+  "Western Europe",
+  "Southeast Asia",
+  "Pacific",
+];
 
 export const TIME_RANGE_OPTIONS: { label: string; value: number }[] = [
   { label: "6h", value: 6 },

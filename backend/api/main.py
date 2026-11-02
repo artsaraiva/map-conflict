@@ -1,9 +1,11 @@
 import os
+import json
 from pathlib import Path
 
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 
 from backend.api.events import router as events_router
 
@@ -24,7 +26,21 @@ app.add_middleware(
 
 app.include_router(events_router)
 
-# ── Static media serving (Telegram thumbnails etc.) ─────────────────────────
+# ── Strategic hotspots GeoJSON ───────────────────────────────────────────────
+_HOTSPOTS_FILE = Path(__file__).parent.parent.parent / "data" / "hotspots.geojson"
+
+
+@app.get("/api/hotspots", response_class=JSONResponse)
+async def get_strategic_hotspots():
+    """Serve the curated strategic locations GeoJSON as a static map layer."""
+    if not _HOTSPOTS_FILE.exists():
+        return JSONResponse({"type": "FeatureCollection", "features": []})
+    with open(_HOTSPOTS_FILE) as f:
+        data = json.load(f)
+    return JSONResponse(data)
+
+
+
 # The media directory is shared between the worker (downloads) and backend
 # (serves) via a Docker volume mounted at /app/media.
 MEDIA_DIR = os.environ.get("MEDIA_DIR", "/app/media")

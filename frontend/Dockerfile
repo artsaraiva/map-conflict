@@ -8,4 +8,4 @@ RUN npm ci
 
 COPY frontend /app/frontend
 
-EXPOSE 3000
+EXPOSE 3001

@@ -28,6 +28,9 @@ class EventResponse(BaseModel):
     longitude: float
     countries: Optional[str] = None
     created_at: datetime
+    confidence_score: Optional[float] = None
+    source_count: Optional[int] = None
+    theater: Optional[str] = None
     articles: list[ArticleResponse] = []
 
     class Config:
@@ -53,3 +56,26 @@ class EventMapPoint(BaseModel):
     image_url: Optional[str] = None
     sources: list[str] = []
     created_at: datetime
+    confidence_score: Optional[float] = None
+    source_count: Optional[int] = None
+    theater: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class RelatedEventResponse(BaseModel):
+    """Lightweight event data returned by the /related endpoint."""
+
+    id: int
+    title: str
+    event_type: str
+    severity: str
+    location_name: str
+    latitude: float
+    longitude: float
+    theater: Optional[str] = None
+    confidence_score: Optional[float] = None
+    created_at: datetime
+    relation_type: str
+    similarity_score: Optional[float] = None

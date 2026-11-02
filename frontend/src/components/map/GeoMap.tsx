@@ -9,6 +9,7 @@ import {
   EventType,
   EVENT_TYPE_CONFIG,
   SEVERITY_CONFIG,
+  MapBounds,
   getEventVisualFamily,
   getSeverityWeight,
 } from "@/lib/types";
@@ -29,6 +30,8 @@ interface GeoMapProps {
   events: EventMapPoint[];
   onEventClick: (eventId: number) => void;
   selectedEventId: number | null;
+  onBoundsChange?: (bounds: MapBounds) => void;
+  strategicHotspots?: GeoJSON.FeatureCollection;
 }
 
 type HotspotFeature = GeoJSON.Feature<
@@ -84,6 +87,57 @@ const SEVERITY_ORDER: Record<string, number> = {
   high: 2,
   critical: 3,
 };
+
+// ─── Tactical arc helpers ───
+
+/** Approximate straight-line distance in km between two lat/lng points. */
+function haversineKm(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Generate intermediate coordinates for a quadratic Bezier arc between two
+ * geographic points. The control point is offset perpendicularly to the
+ * midpoint, producing a gentle curve.
+ */
+function curvedArcPoints(
+  from: [number, number],
+  to: [number, number],
+  curvature = 0.28,
+  steps = 10
+): [number, number][] {
+  const midLng = (from[0] + to[0]) / 2;
+  const midLat = (from[1] + to[1]) / 2;
+  const dLng = to[0] - from[0];
+  const dLat = to[1] - from[1];
+  const dist = Math.sqrt(dLng * dLng + dLat * dLat) || 1;
+  // Perpendicular offset
+  const ctrlLng = midLng + (-dLat / dist) * dist * curvature;
+  const ctrlLat = midLat + (dLng / dist) * dist * curvature;
+
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    pts.push([
+      (1 - t) * (1 - t) * from[0] + 2 * (1 - t) * t * ctrlLng + t * t * to[0],
+      (1 - t) * (1 - t) * from[1] + 2 * (1 - t) * t * ctrlLat + t * t * to[1],
+    ]);
+  }
+  return pts;
+}
 
 // ─── Main animation loop (runs outside React lifecycle) ───
 
@@ -142,6 +196,31 @@ function startMainAnimation(
             0.08,
           ]);
         }
+
+        // ─── Expanding impact ring (high/critical events) ───
+        if (m.getLayer("impact-rings")) {
+          const ringPhase = (phase * 2.5) % 1;
+          const ringRadius = ringPhase * 52;
+          const ringOpacity = Math.max(0, (1 - ringPhase) * 0.45);
+          m.setPaintProperty("impact-rings", "circle-radius", [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            1.5,
+            ringRadius * 0.55,
+            6,
+            ringRadius,
+            9,
+            ringRadius * 1.15,
+          ]);
+          m.setPaintProperty("impact-rings", "circle-stroke-opacity", ringOpacity);
+        }
+
+        // ─── Tactical arc opacity pulse ───
+        if (m.getLayer("tactical-arcs")) {
+          const arcOpacity = 0.18 + Math.sin(phase * Math.PI * 2) * 0.13;
+          m.setPaintProperty("tactical-arcs", "line-opacity", arcOpacity);
+        }
       } catch {
         // map removed during animation
       }
@@ -187,6 +266,8 @@ export default function GeoMap({
   events,
   onEventClick,
   selectedEventId,
+  onBoundsChange,
+  strategicHotspots,
 }: GeoMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -194,6 +275,9 @@ export default function GeoMap({
   // ─── Stable refs ───
   const onEventClickRef = useRef(onEventClick);
   onEventClickRef.current = onEventClick;
+  const onBoundsChangeRef = useRef(onBoundsChange);
+  onBoundsChangeRef.current = onBoundsChange;
+  const boundsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── Supercluster index ref ───
   const clusterIndex = useRef<Supercluster<EventPointProps, ClusterAggProps> | null>(null);
@@ -319,6 +403,65 @@ export default function GeoMap({
     };
   }, [events]);
 
+  // ─── Tactical arcs: curved dashed lines between nearby same-theater high-severity events ───
+  const tacticalArcsGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
+    const CONFLICT_FAMILIES = new Set([
+      "conflict",
+      "military_movement",
+      "airstrike",
+      "maritime_incident",
+      "naval_blockade",
+    ]);
+    const HIGH_SEVERITY = new Set(["critical", "high"]);
+    const MAX_DISTANCE_KM = 1200;
+    const MAX_ARCS = 40;
+
+    const seeds = events.filter(
+      (e) => CONFLICT_FAMILIES.has(e.event_type) && HIGH_SEVERITY.has(e.severity)
+    );
+
+    const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+    const seen = new Set<string>();
+
+    for (let i = 0; i < seeds.length && features.length < MAX_ARCS; i++) {
+      const a = seeds[i];
+      for (let j = i + 1; j < seeds.length && features.length < MAX_ARCS; j++) {
+        const b = seeds[j];
+        // Only connect events in the same theater (skip if both have mismatched theaters)
+        if (a.theater && b.theater && a.theater !== b.theater) continue;
+
+        const key = `${Math.min(a.id, b.id)}-${Math.max(a.id, b.id)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const dist = haversineKm(a.latitude, a.longitude, b.latitude, b.longitude);
+        if (dist < 60 || dist > MAX_DISTANCE_KM) continue;
+
+        // Curvature scales gently with distance
+        const curvature = Math.min(0.45, dist / 3500);
+        const coords = curvedArcPoints(
+          [a.longitude, a.latitude],
+          [b.longitude, b.latitude],
+          curvature
+        );
+
+        features.push({
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: coords },
+          properties: {
+            severity:
+              a.severity === "critical" || b.severity === "critical"
+                ? "critical"
+                : "high",
+            theater: a.theater ?? b.theater ?? "",
+          },
+        });
+      }
+    }
+
+    return { type: "FeatureCollection", features };
+  }, [events]);
+
   // ─── Map initialization (runs ONCE) ───
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -396,6 +539,98 @@ export default function GeoMap({
       m.addSource("hotspots", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
+      });
+
+      // ─── Strategic locations source (static curated places) ───
+      m.addSource("strategic-locations", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      // Strategic location rings — always visible, low zoom only
+      m.addLayer({
+        id: "strategic-ring",
+        type: "circle",
+        source: "strategic-locations",
+        paint: {
+          "circle-radius": [
+            "interpolate", ["linear"], ["zoom"],
+            1, 6,
+            4, 10,
+          ],
+          "circle-color": "rgba(255, 220, 100, 0)",
+          "circle-stroke-color": "rgba(255, 220, 100, 0.55)",
+          "circle-stroke-width": 1.2,
+          "circle-opacity": [
+            "interpolate", ["linear"], ["zoom"],
+            1, 0.7,
+            5, 0.3,
+            7, 0,
+          ],
+        },
+      });
+
+      // Strategic location label at mid-zoom
+      m.addLayer({
+        id: "strategic-label",
+        type: "symbol",
+        source: "strategic-locations",
+        maxzoom: 6,
+        layout: {
+          "text-field": ["get", "name"],
+          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+          "text-size": 9,
+          "text-offset": [0, 1.2],
+          "text-anchor": "top",
+          "text-allow-overlap": false,
+          "text-optional": true,
+        },
+        paint: {
+          "text-color": "rgba(255, 220, 100, 0.65)",
+          "text-halo-color": "rgba(0, 0, 0, 0.7)",
+          "text-halo-width": 1,
+          "text-opacity": [
+            "interpolate", ["linear"], ["zoom"],
+            2, 0,
+            3, 0.8,
+            6, 0,
+          ],
+        },
+      });
+
+      // ─── Tactical arc layers (animated curved connection lines between nearby high-severity events) ───
+      m.addSource("tactical-arcs", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      m.addLayer({
+        id: "tactical-arcs",
+        type: "line",
+        source: "tactical-arcs",
+        maxzoom: 7,
+        paint: {
+          "line-color": [
+            "match",
+            ["get", "severity"],
+            "critical",
+            "rgba(255, 72, 72, 0.55)",
+            "rgba(255, 150, 50, 0.42)",
+          ],
+          "line-width": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            1,
+            0.7,
+            4,
+            1.1,
+            7,
+            1.5,
+          ],
+          "line-dasharray": [2, 4],
+          "line-opacity": 0.3,
+        },
       });
 
       // ─── Hotspot layers ───
@@ -538,6 +773,26 @@ export default function GeoMap({
           "text-color": "#f8f3e7",
           "text-halo-color": "rgba(0, 0, 0, 0.6)",
           "text-halo-width": 1.5,
+        },
+      });
+
+      // ─── Impact ring layer (expanding pulse ring for high/critical events) ───
+      m.addLayer({
+        id: "impact-rings",
+        type: "circle",
+        source: "events",
+        filter: [
+          "all",
+          ["!", ["has", "point_count"]],
+          ["match", ["get", "severity"], ["critical", "high"], true, false],
+        ],
+        paint: {
+          "circle-radius": 0,
+          "circle-color": "rgba(0, 0, 0, 0)",
+          "circle-opacity": 0,
+          "circle-stroke-width": 1.2,
+          "circle-stroke-color": ["get", "color"],
+          "circle-stroke-opacity": 0,
         },
       });
 
@@ -904,6 +1159,19 @@ export default function GeoMap({
         if (clusterIndex.current) {
           updateClusters(m, clusterIndex.current);
         }
+        // Debounced bounds callback — fires 600ms after the last move/zoom
+        if (onBoundsChangeRef.current) {
+          if (boundsDebounceRef.current) clearTimeout(boundsDebounceRef.current);
+          boundsDebounceRef.current = setTimeout(() => {
+            const b = m.getBounds();
+            onBoundsChangeRef.current?.({
+              minLng: b.getWest(),
+              minLat: b.getSouth(),
+              maxLng: b.getEast(),
+              maxLat: b.getNorth(),
+            });
+          }, 600);
+        }
       };
       m.on("moveend", onViewportChange);
       m.on("zoomend", onViewportChange);
@@ -935,6 +1203,24 @@ export default function GeoMap({
     ) as maplibregl.GeoJSONSource | undefined;
     source?.setData(hotspotGeoJSON);
   }, [hotspotGeoJSON]);
+
+  // ─── Reactive strategic locations updates ───
+  useEffect(() => {
+    if (!map.current || !strategicHotspots) return;
+    const source = map.current.getSource(
+      "strategic-locations"
+    ) as maplibregl.GeoJSONSource | undefined;
+    source?.setData(strategicHotspots);
+  }, [strategicHotspots]);
+
+  // ─── Reactive tactical arc updates ───
+  useEffect(() => {
+    if (!map.current) return;
+    const source = map.current.getSource(
+      "tactical-arcs"
+    ) as maplibregl.GeoJSONSource | undefined;
+    source?.setData(tacticalArcsGeoJSON);
+  }, [tacticalArcsGeoJSON]);
 
   return (
     <div ref={mapContainer} className="absolute inset-0 h-full w-full" />

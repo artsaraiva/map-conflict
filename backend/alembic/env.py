@@ -2,6 +2,7 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 import asyncio
+import os
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # Import models so Alembic can detect them
@@ -12,13 +13,16 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Allow DATABASE_URL env var to override alembic.ini (needed in Docker where
+# the ini file still points to localhost but the service is at postgres:5432)
+_db_url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=_db_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -35,7 +39,7 @@ def do_run_migrations(connection):
 
 async def run_async_migrations():
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = config.get_main_option("sqlalchemy.url")
+    configuration["sqlalchemy.url"] = _db_url
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",

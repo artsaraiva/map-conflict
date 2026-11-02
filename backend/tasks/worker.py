@@ -32,6 +32,16 @@ app.conf.update(
             "task": "backend.tasks.worker.scrape_and_process_rss",
             "schedule": crontab(minute="*/15"),
         },
+        # X ingestion runs every 10 minutes when X_BEARER_TOKEN is configured
+        "scrape-x-every-10-min": {
+            "task": "backend.tasks.worker.scrape_and_process_x",
+            "schedule": crontab(minute="*/10"),
+        },
+        # GDELT is free and requires no auth — runs every 30 minutes
+        "scrape-gdelt-every-30-min": {
+            "task": "backend.tasks.worker.scrape_and_process_gdelt",
+            "schedule": crontab(minute="*/30"),
+        },
     },
 )
 
@@ -59,6 +69,34 @@ def scrape_and_process_rss():
     asyncio.set_event_loop(loop)
     try:
         result = loop.run_until_complete(run_rss_pipeline())
+        return {"events_processed": result}
+    finally:
+        loop.close()
+
+
+@app.task(name="backend.tasks.worker.scrape_and_process_x")
+def scrape_and_process_x():
+    """Celery task that scrapes X accounts and processes tweets."""
+    from backend.processing.pipeline import run_x_pipeline
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        result = loop.run_until_complete(run_x_pipeline())
+        return {"events_processed": result}
+    finally:
+        loop.close()
+
+
+@app.task(name="backend.tasks.worker.scrape_and_process_gdelt")
+def scrape_and_process_gdelt():
+    """Celery task that scrapes GDELT Doc API and processes articles."""
+    from backend.processing.pipeline import run_gdelt_pipeline
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        result = loop.run_until_complete(run_gdelt_pipeline())
         return {"events_processed": result}
     finally:
         loop.close()

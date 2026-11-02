@@ -1,15 +1,17 @@
 "use client";
 
-import { GeoEvent, Article, EVENT_TYPE_CONFIG, SEVERITY_CONFIG } from "@/lib/types";
+import { GeoEvent, Article, RelatedEvent, EVENT_TYPE_CONFIG, SEVERITY_CONFIG } from "@/lib/types";
+import { fetchRelatedEvents } from "@/lib/api";
 import { formatTimeAgo, isTelegramSource, getSourceLabel, getTelegramChannelUrl } from "@/lib/utils";
 import { getEmbedInfo, getVideoPlatformLabel, isTelegramLink, isLocalVideo } from "@/lib/media-utils";
 import clsx from "clsx";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 interface EventPanelProps {
   event: GeoEvent | null;
   isLoading: boolean;
   onClose: () => void;
+  onEventSelect?: (eventId: number) => void;
 }
 
 // ── Article grouping utilities (Jaccard title similarity) ──────────────────
@@ -478,14 +480,25 @@ export default function EventPanel({
   event,
   isLoading,
   onClose,
+  onEventSelect,
 }: EventPanelProps) {
   const [galleryErrors, setGalleryErrors] = useState<Set<number>>(new Set());
+  const [relatedEvents, setRelatedEvents] = useState<RelatedEvent[]>([]);
 
   // Group similar articles for deduped display — must be before early return
   const articleGroups = useMemo(
     () => (event?.articles ? groupSimilarArticles(event.articles) : []),
     [event?.articles]
   );
+
+  // Fetch related events whenever the selected event changes
+  useEffect(() => {
+    if (!event) {
+      setRelatedEvents([]);
+      return;
+    }
+    fetchRelatedEvents(event.id).then(setRelatedEvents).catch(() => setRelatedEvents([]));
+  }, [event?.id]);
 
   if (!event && !isLoading) return null;
 
@@ -685,6 +698,59 @@ export default function EventPanel({
                   {articleGroups.map((group) => (
                     <GroupedArticleCard key={group.primary.id} group={group} heroImageUrl={heroImage || undefined} />
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* ─── Related events ─── */}
+            {relatedEvents.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-[11px] font-medium uppercase tracking-[0.24em] text-[#86a1aa]">
+                  Related Events ({relatedEvents.length})
+                </h3>
+                <div className="space-y-1.5">
+                  {relatedEvents.map((rel) => {
+                    const tc = EVENT_TYPE_CONFIG[rel.event_type];
+                    return (
+                      <button
+                        key={rel.id}
+                        onClick={() => onEventSelect?.(rel.id)}
+                        className="w-full rounded-xl border border-[#263740] bg-[#0f1820]/70 px-3 py-2.5 text-left transition-all hover:border-[#3a5260] hover:bg-[#14202a]"
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div
+                            className="mt-1 h-2 w-2 flex-shrink-0 rounded-full"
+                            style={{ backgroundColor: tc?.color ?? "#8e97ab" }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="line-clamp-2 text-[13px] font-medium leading-snug text-[#dde4e0]">
+                              {rel.title}
+                            </div>
+                            <div className="mt-1 flex items-center gap-2 text-[11px] text-[#6a7e84]">
+                              <span style={{ color: tc?.color ?? "#8e97ab" }}>{tc?.label ?? rel.event_type}</span>
+                              <span>·</span>
+                              <span>{rel.location_name}</span>
+                              {rel.theater && (
+                                <>
+                                  <span>·</span>
+                                  <span className="text-[#4d6068]">{rel.theater}</span>
+                                </>
+                              )}
+                              {rel.similarity_score != null && (
+                                <>
+                                  <span>·</span>
+                                  <span className="text-[#4d6068]">{Math.round(rel.similarity_score * 100)}% match</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <span className="flex-shrink-0 text-[10px] text-[#4d6068]">
+                            {formatTimeAgo(rel.created_at)}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

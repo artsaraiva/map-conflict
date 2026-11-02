@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from backend.core.database import get_db
-from backend.models.event import Event, Article
-from backend.api.schemas import EventResponse, EventListResponse, EventMapPoint
+from backend.models.event import Event, Article, EventRelationship
+from backend.api.schemas import EventResponse, EventListResponse, EventMapPoint, RelatedEventResponse
 
 router = APIRouter(prefix="/api/events", tags=["events"])
 
@@ -82,17 +82,33 @@ async def get_events(
 @router.get("/map-points", response_model=list[EventMapPoint])
 async def get_map_points(
     db: AsyncSession = Depends(get_db),
+    min_lat: Optional[float] = Query(None, description="Bounding box south latitude"),
+    max_lat: Optional[float] = Query(None, description="Bounding box north latitude"),
+    min_lng: Optional[float] = Query(None, description="Bounding box west longitude"),
+    max_lng: Optional[float] = Query(None, description="Bounding box east longitude"),
     event_type: Optional[str] = Query(
         None, description="Filter by event type (comma-separated for multiple)"
     ),
     severity: Optional[str] = Query(
         None, description="Filter by severity (comma-separated for multiple)"
     ),
+    theater: Optional[str] = Query(
+        None, description="Filter by theater name (comma-separated for multiple)"
+    ),
     since_hours: int = Query(72, description="Show events from last N hours"),
 ):
     """Get lightweight event data optimized for map rendering."""
     since = datetime.utcnow() - timedelta(hours=since_hours)
     query = select(Event).where(Event.created_at >= since)
+
+    # Viewport bounding box filter — reduces payload to only visible events
+    if all(v is not None for v in [min_lat, max_lat, min_lng, max_lng]):
+        query = query.where(
+            Event.latitude >= min_lat,
+            Event.latitude <= max_lat,
+            Event.longitude >= min_lng,
+            Event.longitude <= max_lng,
+        )
 
     if event_type:
         types = [t.strip() for t in event_type.split(",") if t.strip()]
@@ -107,6 +123,13 @@ async def get_map_points(
             query = query.where(Event.severity == severities[0])
         elif severities:
             query = query.where(Event.severity.in_(severities))
+
+    if theater:
+        theaters = [t.strip() for t in theater.split(",") if t.strip()]
+        if len(theaters) == 1:
+            query = query.where(Event.theater == theaters[0])
+        elif theaters:
+            query = query.where(Event.theater.in_(theaters))
 
     query = query.order_by(Event.created_at.desc())
 
@@ -130,6 +153,9 @@ async def get_map_points(
                 dict.fromkeys(a.source for a in (e.articles or []) if a.source)
             ),
             created_at=e.created_at,
+            confidence_score=e.confidence_score,
+            source_count=e.source_count,
+            theater=e.theater,
         )
         for e in events
     ]
@@ -145,3 +171,38 @@ async def get_event(event_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Event not found")
 
     return EventResponse.model_validate(event)
+
+
+@router.get("/{event_id}/related", response_model=list[RelatedEventResponse])
+async def get_related_events(
+    event_id: int,
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(5, ge=1, le=20),
+):
+    """Return events semantically related to a given event, ordered by similarity score."""
+    result = await db.execute(
+        select(EventRelationship, Event)
+        .join(Event, Event.id == EventRelationship.target_event_id)
+        .where(EventRelationship.source_event_id == event_id)
+        .order_by(EventRelationship.similarity_score.desc())
+        .limit(limit)
+    )
+    rows = result.all()
+
+    return [
+        RelatedEventResponse(
+            id=event.id,
+            title=event.title,
+            event_type=event.event_type.value if event.event_type else "other",
+            severity=event.severity.value if event.severity else "medium",
+            location_name=event.location_name,
+            latitude=event.latitude,
+            longitude=event.longitude,
+            theater=event.theater,
+            confidence_score=event.confidence_score,
+            created_at=event.created_at,
+            relation_type=rel.relation_type,
+            similarity_score=rel.similarity_score,
+        )
+        for rel, event in rows
+    ]

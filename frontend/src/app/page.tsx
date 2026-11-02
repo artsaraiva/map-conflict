@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { fetchMapPoints, fetchEvent, triggerPipeline } from "@/lib/api";
-import { GeoEvent, MapFilters, DEFAULT_FILTERS } from "@/lib/types";
+import { fetchMapPoints, fetchEvent, triggerPipeline, fetchStrategicHotspots } from "@/lib/api";
+import { GeoEvent, MapFilters, MapBounds, DEFAULT_FILTERS } from "@/lib/types";
 import EventPanel from "@/components/panels/EventPanel";
 import EventList from "@/components/panels/EventList";
 import Header from "@/components/ui/Header";
 import BriefingBar from "@/components/ui/BriefingBar";
 import LegendPanel from "@/components/ui/LegendPanel";
+import TimelineSlider from "@/components/ui/TimelineSlider";
 
 // Dynamic import for map (no SSR since MapLibre needs the DOM)
 const GeoMap = dynamic(() => import("@/components/map/GeoMap"), {
@@ -28,15 +29,30 @@ export default function Home() {
   const [isListOpen, setIsListOpen] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filters, setFilters] = useState<MapFilters>(DEFAULT_FILTERS);
+  const [mapBounds, setMapBounds] = useState<MapBounds | undefined>();
+  const [timelineCursor, setTimelineCursor] = useState<Date | null>(null);
 
-  // Fetch map points with filters
+  // Fetch map points with filters + viewport bounds
   const {
     data: mapPoints = [],
     refetch: refetchPoints,
   } = useQuery({
-    queryKey: ["map-points", filters],
-    queryFn: () => fetchMapPoints(filters),
+    queryKey: ["map-points", filters, mapBounds],
+    queryFn: () => fetchMapPoints(filters, mapBounds),
   });
+
+  // Fetch curated strategic locations once
+  const { data: strategicHotspots } = useQuery({
+    queryKey: ["strategic-hotspots"],
+    queryFn: fetchStrategicHotspots,
+    staleTime: Infinity,
+  });
+
+  // Apply timeline cursor filter client-side — avoids extra API round-trips
+  const visiblePoints = useMemo(() => {
+    if (!timelineCursor) return mapPoints;
+    return mapPoints.filter((e) => new Date(e.created_at) <= timelineCursor);
+  }, [mapPoints, timelineCursor]);
 
   // Handle event click
   const handleEventClick = useCallback(
@@ -80,7 +96,7 @@ export default function Home() {
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-[#081116]">
       <Header
-        eventCount={mapPoints.length}
+        eventCount={visiblePoints.length}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
       />
@@ -89,18 +105,25 @@ export default function Home() {
 
       <div className="absolute inset-0 pt-16">
         <GeoMap
-          events={mapPoints}
+          events={visiblePoints}
           onEventClick={handleEventClick}
           selectedEventId={selectedEventId}
+          onBoundsChange={setMapBounds}
+          strategicHotspots={strategicHotspots}
         />
       </div>
 
       <LegendPanel />
-      <BriefingBar events={mapPoints} />
+      <BriefingBar events={visiblePoints} />
+
+      <TimelineSlider
+        eventTimes={mapPoints.map((e) => e.created_at)}
+        onTimeChange={setTimelineCursor}
+      />
 
       <div className="pt-16">
         <EventList
-          events={mapPoints}
+          events={visiblePoints}
           selectedEventId={selectedEventId}
           onEventSelect={handleEventClick}
           isOpen={isListOpen}
@@ -115,6 +138,7 @@ export default function Home() {
           event={selectedEvent}
           isLoading={isEventLoading}
           onClose={handleClosePanel}
+          onEventSelect={handleEventClick}
         />
       </div>
     </main>
