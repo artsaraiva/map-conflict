@@ -28,16 +28,16 @@ app.add_middleware(
 
 app.include_router(events_router)
 
-# ── Strategic hotspots GeoJSON ───────────────────────────────────────────────
-_HOTSPOTS_FILE = Path(__file__).parent.parent.parent / "data" / "hotspots.geojson"
+# ── Strategic Locations GeoJSON ──────────────────────────────────────────────
+_STRATEGIC_LOCATIONS_FILE = Path(__file__).parent.parent.parent / "data" / "strategic_locations.geojson"
 
 
-@app.get("/api/hotspots", response_class=JSONResponse)
-async def get_strategic_hotspots():
-    """Serve the curated strategic locations GeoJSON as a static map layer."""
-    if not _HOTSPOTS_FILE.exists():
+@app.get("/api/strategic-locations", response_class=JSONResponse)
+async def get_strategic_locations():
+    """Serve the curated Strategic Locations GeoJSON as a static map layer."""
+    if not _STRATEGIC_LOCATIONS_FILE.exists():
         return JSONResponse({"type": "FeatureCollection", "features": []})
-    with open(_HOTSPOTS_FILE) as f:
+    with open(_STRATEGIC_LOCATIONS_FILE) as f:
         data = json.load(f)
     return JSONResponse(data)
 

@@ -58,9 +58,9 @@ export async function fetchMapPoints(
   return data.map(resolveMapPoint);
 }
 
-export async function fetchStrategicHotspots(): Promise<GeoJSON.FeatureCollection> {
-  const res = await fetch(`${API_URL}/api/hotspots`);
-  if (!res.ok) throw new Error("Failed to fetch strategic hotspots");
+export async function fetchStrategicLocations(): Promise<GeoJSON.FeatureCollection> {
+  const res = await fetch(`${API_URL}/api/strategic-locations`);
+  if (!res.ok) throw new Error("Failed to fetch Strategic Locations");
   return res.json();
 }
 

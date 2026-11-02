@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { fetchMapPoints, fetchEvent, triggerPipeline, fetchStrategicHotspots, fetchTheaters } from "@/lib/api";
+import { fetchMapPoints, fetchEvent, triggerPipeline, fetchStrategicLocations, fetchTheaters } from "@/lib/api";
 import { GeoEvent, MapFilters, MapBounds, DEFAULT_FILTERS } from "@/lib/types";
 import { timeRange, visibleEvents } from "@/lib/map-view";
 import EventPanel from "@/components/panels/EventPanel";
@@ -52,9 +52,9 @@ export default function Home() {
   const range = useMemo(() => timeRange(mapPoints, now), [mapPoints, now]);
 
   // Fetch curated strategic locations once
-  const { data: strategicHotspots } = useQuery({
-    queryKey: ["strategic-hotspots"],
-    queryFn: fetchStrategicHotspots,
+  const { data: strategicLocations } = useQuery({
+    queryKey: ["strategic-locations"],
+    queryFn: fetchStrategicLocations,
     staleTime: Infinity,
   });
 
@@ -126,7 +126,7 @@ export default function Home() {
           onEventClick={handleEventClick}
           selectedEventId={selectedEventId}
           onBoundsChange={setMapBounds}
-          strategicHotspots={strategicHotspots}
+          strategicLocations={strategicLocations}
         />
       </div>
 
