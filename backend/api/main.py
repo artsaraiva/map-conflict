@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 
 from backend.api.events import router as events_router
+from backend.api.pressure import router as pressure_router
 from backend.core.config import get_settings
 from backend.processing.theaters import theater_names
 
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 
 app.include_router(events_router)
+app.include_router(pressure_router)
 
 # ── Strategic Locations GeoJSON ──────────────────────────────────────────────
 _STRATEGIC_LOCATIONS_FILE = Path(__file__).parent.parent.parent / "data" / "strategic_locations.geojson"

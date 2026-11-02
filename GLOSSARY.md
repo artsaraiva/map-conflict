@@ -52,6 +52,7 @@ _Avoid_: Region, zone, area, continent-level groupings like "Middle East"
 
 **Pressure**:
 How much is going on in a Theater over a time window, weighing Events by severity and Corroboration.
+The formula and its thresholds are in `docs/adr/0002-pressure-formula.md`.
 _Avoid_: Heat, activity, hotspot
 
 **Escalation**:

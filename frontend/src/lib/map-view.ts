@@ -109,3 +109,15 @@ export function densityOpacity(stops: [zoom: number, opacity: number][]): Expres
     ...stops.flatMap(([zoom, opacity]) => [zoom, ["*", opacity, scale]]),
   ] as ExpressionSpecification;
 }
+
+// The least-pressed Theater with any Pressure still paints this share of the strongest fill.
+const MIN_PRESSURE_SHADE = 0.2;
+
+/**
+ * How strongly a Theater is filled, 0 to 1, relative to the Theater with the most
+ * Pressure in the window. A Theater at 0 gets no fill.
+ */
+export function pressureShade(pressure: number, maxPressure: number): number {
+  if (pressure <= 0 || maxPressure <= 0) return 0;
+  return MIN_PRESSURE_SHADE + (1 - MIN_PRESSURE_SHADE) * Math.min(pressure / maxPressure, 1);
+}

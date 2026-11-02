@@ -1,4 +1,4 @@
-import { EventMapPoint, GeoEvent, EventLink, MapFilters, MapBounds } from "./types";
+import { EventMapPoint, GeoEvent, EventLink, MapFilters, MapBounds, PressureCollection } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -67,6 +67,13 @@ export async function fetchStrategicLocations(): Promise<GeoJSON.FeatureCollecti
 export async function fetchTheaters(): Promise<string[]> {
   const res = await fetch(`${API_URL}/api/theaters`);
   if (!res.ok) throw new Error("Failed to fetch theaters");
+  return res.json();
+}
+
+/** Every Theater's polygon with its Pressure over the last `windowHours`. */
+export async function fetchPressure(windowHours = 24): Promise<PressureCollection> {
+  const res = await fetch(`${API_URL}/api/pressure?window_hours=${windowHours}`);
+  if (!res.ok) throw new Error("Failed to fetch Pressure");
   return res.json();
 }
 

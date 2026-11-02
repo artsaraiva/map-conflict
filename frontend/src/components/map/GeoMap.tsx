@@ -10,12 +10,13 @@ import {
   EVENT_TYPE_CONFIG,
   SEVERITY_CONFIG,
   MapBounds,
+  PressureCollection,
   SeverityLevel,
   getEventVisualFamily,
   getSeverityWeight,
   severityRank,
 } from "@/lib/types";
-import { densityCells, densityOpacity } from "@/lib/map-view";
+import { densityCells, densityOpacity, pressureShade } from "@/lib/map-view";
 import {
   AnimatedVehicle,
   createAnimatedVehicles,
@@ -35,7 +36,14 @@ interface GeoMapProps {
   selectedEventId: number | null;
   onBoundsChange?: (bounds: MapBounds) => void;
   strategicLocations?: GeoJSON.FeatureCollection;
+  pressure?: PressureCollection;
+  onTheaterSelect?: (theater: string) => void;
 }
+
+// Pressure fills and escalation outlines, shown zoomed out like the density wash
+const PRESSURE_COLOR = "rgb(255, 105, 74)";
+const PRESSURE_MAX_ZOOM = 6.5;
+const EVENT_LAYERS = ["event-dots", "event-icons", "cluster-circles"];
 
 // ─── Event point properties stored in Supercluster ───
 interface EventPointProps {
@@ -200,6 +208,8 @@ export default function GeoMap({
   selectedEventId,
   onBoundsChange,
   strategicLocations,
+  pressure,
+  onTheaterSelect,
 }: GeoMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -209,6 +219,8 @@ export default function GeoMap({
   onEventClickRef.current = onEventClick;
   const onBoundsChangeRef = useRef(onBoundsChange);
   onBoundsChangeRef.current = onBoundsChange;
+  const onTheaterSelectRef = useRef(onTheaterSelect);
+  onTheaterSelectRef.current = onTheaterSelect;
   const boundsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── Supercluster index ref ───
@@ -288,6 +300,21 @@ export default function GeoMap({
     [events]
   );
 
+  const pressureGeoJSON = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!pressure) return null;
+    const max = Math.max(0, ...pressure.features.map((f) => f.properties.pressure));
+    return {
+      ...pressure,
+      features: pressure.features.map((f) => ({
+        ...f,
+        properties: { ...f.properties, shade: pressureShade(f.properties.pressure, max) },
+      })),
+    };
+  }, [pressure]);
+  // The latest Pressure, for the map to pick up when it finishes loading
+  const pressureGeoJSONRef = useRef(pressureGeoJSON);
+  pressureGeoJSONRef.current = pressureGeoJSON;
+
   // ─── Map initialization (runs ONCE) ───
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -346,6 +373,48 @@ export default function GeoMap({
         id: "background-fade",
         type: "background",
         paint: { "background-color": "rgba(3, 10, 14, 0.14)" },
+      });
+
+      // ─── Pressure per Theater (beneath the density wash, which reads through) ───
+      m.addSource("pressure", {
+        type: "geojson",
+        data: pressureGeoJSONRef.current ?? { type: "FeatureCollection", features: [] },
+      });
+
+      m.addLayer({
+        id: "pressure-fill",
+        type: "fill",
+        source: "pressure",
+        maxzoom: PRESSURE_MAX_ZOOM,
+        filter: [">", ["get", "shade"], 0],
+        paint: {
+          "fill-color": PRESSURE_COLOR,
+          "fill-opacity": [
+            "interpolate", ["linear"], ["zoom"],
+            1.5, ["*", ["get", "shade"], 0.2],
+            4.5, ["*", ["get", "shade"], 0.14],
+            PRESSURE_MAX_ZOOM, 0,
+          ],
+        },
+      });
+
+      m.addLayer({
+        id: "pressure-outline",
+        type: "line",
+        source: "pressure",
+        maxzoom: PRESSURE_MAX_ZOOM,
+        filter: ["==", ["get", "escalating"], true],
+        paint: {
+          "line-color": PRESSURE_COLOR,
+          "line-width": 1.6,
+          "line-dasharray": [3, 2],
+          "line-opacity": [
+            "interpolate", ["linear"], ["zoom"],
+            1.5, 0.85,
+            5, 0.6,
+            PRESSURE_MAX_ZOOM, 0,
+          ],
+        },
       });
 
       // ─── Data sources ───
@@ -918,6 +987,38 @@ export default function GeoMap({
           .addTo(m);
       };
 
+      // Theater tooltip and click, except where an Event sits on top
+      const overEvent = (e: maplibregl.MapLayerMouseEvent) =>
+        m.queryRenderedFeatures(e.point, { layers: EVENT_LAYERS }).length > 0;
+
+      m.on("mousemove", "pressure-fill", (e) => {
+        const props = e.features?.[0]?.properties;
+        if (!props || overEvent(e)) return;
+        m.getCanvas().style.cursor = "pointer";
+        popup
+          .setLngLat(e.lngLat)
+          .setHTML(
+            `<div class="map-tooltip-card">
+              <div class="map-tooltip-title">${props.name}</div>
+              <div class="map-tooltip-meta">
+                <span>Pressure ${props.pressure}</span>
+                <span class="map-tooltip-divider">|</span>
+                <span>before ${props.previous_pressure}</span>
+              </div>
+              <div class="map-tooltip-sources">${props.escalating ? "Escalating" : "Not escalating"}</div>
+            </div>`
+          )
+          .addTo(m);
+      });
+      m.on("mouseleave", "pressure-fill", () => {
+        m.getCanvas().style.cursor = "";
+        popup.remove();
+      });
+      m.on("click", "pressure-fill", (e) => {
+        const name = e.features?.[0]?.properties?.name;
+        if (name && !overEvent(e)) onTheaterSelectRef.current?.(String(name));
+      });
+
       m.on("mouseenter", "event-dots", showEventTooltip);
       m.on("mouseenter", "event-icons", showEventTooltip);
       m.on("mouseenter", "cluster-circles", showClusterTooltip);
@@ -974,6 +1075,13 @@ export default function GeoMap({
     ) as maplibregl.GeoJSONSource | undefined;
     source?.setData(densityGeoJSON);
   }, [densityGeoJSON]);
+
+  // ─── Reactive Pressure updates ───
+  useEffect(() => {
+    if (!map.current || !pressureGeoJSON) return;
+    const source = map.current.getSource("pressure") as maplibregl.GeoJSONSource | undefined;
+    source?.setData(pressureGeoJSON);
+  }, [pressureGeoJSON]);
 
   // ─── Reactive strategic locations updates ───
   useEffect(() => {
