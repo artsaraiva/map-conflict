@@ -44,9 +44,9 @@ async def geocode(name):
     return GeocodedLocation(name=name, latitude=15.0, longitude=42.0)
 
 
-def report(title, *, source="bbc.co.uk", description=STRIKE):
-    return Report(url=f"https://{source}/{title}", title=title, description=description,
-                  source=source, feed="rss")
+def report(title, *, source="bbc.co.uk", description=STRIKE, feed="rss", url=None):
+    return Report(url=url or f"https://{source}/{title}", title=title, description=description,
+                  source=source, feed=feed)
 
 
 @pytest.fixture
@@ -124,3 +124,44 @@ async def test_one_failing_report_does_not_stop_the_batch(session_factory):
     assert str(outcomes[1].error) == "boom"
     [retry] = await ingest([report("broken")], FakeClassifier(broken=geopolitical()), geocode, session_factory)
     assert retry.kind == "corroborated"  # nothing of the failed Report was stored
+
+
+# Reports as the adapters hand them over: RSS and Telegram leave `source` empty,
+# GDELT gives the Source's raw `domain`.
+BBC_VIA = {
+    "rss": lambda: report("rss", source="", url="https://www.bbc.co.uk/news/world-1"),
+    "gdelt": lambda: report("gdelt", source="bbc.com", feed="gdelt", url="https://www.bbc.com/news/articles/c1"),
+}
+
+
+@pytest.mark.parametrize("first, second", [("rss", "gdelt"), ("gdelt", "rss")])
+async def test_same_source_through_two_feeds_counts_once(session_factory, first, second):
+    classify = FakeClassifier(rss=geopolitical(), gdelt=geopolitical())
+
+    await ingest([BBC_VIA[first]()], classify, geocode, session_factory)
+    [outcome] = await ingest([BBC_VIA[second]()], classify, geocode, session_factory)
+
+    assert outcome.kind == "corroborated"
+    assert outcome.event.source_count == 1
+    assert outcome.event.confidence_score == 0.2
+
+
+async def test_unmapped_source_counts_as_its_own_source(session_factory):
+    classify = FakeClassifier(rss=geopolitical(), telegram=geopolitical())
+    telegram = report("telegram", source="", feed="telegram", url="https://t.me/RNintel/4242")
+
+    await ingest([BBC_VIA["rss"]()], classify, geocode, session_factory)
+    [outcome] = await ingest([telegram], classify, geocode, session_factory)
+
+    assert outcome.kind == "corroborated"
+    assert outcome.event.source_count == 2
+
+
+async def test_two_unmapped_gdelt_domains_are_two_sources(session_factory):
+    classify = FakeClassifier(ynet=geopolitical(), toi=geopolitical())
+
+    await ingest([report("ynet", source="ynetnews.com", feed="gdelt")], classify, geocode, session_factory)
+    [outcome] = await ingest([report("toi", source="timesofisrael.com", feed="gdelt")], classify, geocode, session_factory)
+
+    assert outcome.kind == "corroborated"
+    assert outcome.event.source_count == 2

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
-from sqlalchemy import select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
@@ -26,6 +26,7 @@ from backend.models.event import (
 )
 from backend.processing.geocoder import GeocodedLocation
 from backend.processing.nlp import ArticleAnalysis, text_similarity
+from backend.scraping.sources import source_key
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,10 @@ class Report:
     """
     A single Report: published by one Source, received through one Feed.
 
-    Adapters fill the content fields. `published_at` must be timezone-aware,
-    or naive and already UTC. `run_feed` stamps `feed`, and `source` from the URL unless the adapter set it.
+    Adapters fill the content fields, and `source` when the Feed names the Source
+    (a raw value such as GDELT's `domain`). `published_at` must be timezone-aware,
+    or naive and already UTC. `run_feed` stamps `feed`; `ingest` turns `source`,
+    or the URL when it is empty, into the canonical Source key.
     """
 
     url: str
@@ -103,6 +106,15 @@ def _derive_theater(lat: float, lng: float) -> str:
         if lat_min <= lat <= lat_max and lng_min <= lng <= lng_max:
             return name
     return "Other"
+
+
+async def _refresh_corroboration(session: AsyncSession, event: Event) -> None:
+    """Corroboration is the number of distinct Sources across the Event's Reports; Confidence follows it."""
+    await session.flush()  # the count must see the Report just stored
+    event.source_count = await session.scalar(
+        select(func.count(distinct(Article.source))).where(Article.event_id == event.id)
+    )
+    event.confidence_score = _compute_confidence(event.source_count)
 
 
 def _compute_confidence(source_count: int) -> float:
@@ -262,8 +274,8 @@ async def _ingest_one(
     session: AsyncSession, report: Report, classify: Classify, geocode: Geocode
 ) -> Outcome:
     """Process one Report inside the caller's transaction; the caller commits."""
-    # Normalize published_at to naive UTC
     report.published_at = _to_naive_utc(report.published_at)
+    report.source = source_key(report.source or report.url)
 
     # Skip if already processed
     if await _article_exists(session, report.url):
@@ -314,12 +326,7 @@ async def _ingest_one(
         ):
             existing_event.severity = severity
 
-        # Refresh intelligence fields
-        new_source_count = len(
-            {a.source for a in existing_event.articles if a.source} | {report.source}
-        )
-        existing_event.source_count = new_source_count
-        existing_event.confidence_score = _compute_confidence(new_source_count)
+        await _refresh_corroboration(session, existing_event)
         existing_event.updated_at = datetime.utcnow()
         logger.info(f"Added Report to existing Event: {existing_event.title}")
         return Outcome("corroborated", event=existing_event)
@@ -335,14 +342,13 @@ async def _ingest_one(
         longitude=geo.longitude,
         countries=",".join(analysis.countries) if analysis.countries else None,
         theater=_derive_theater(geo.latitude, geo.longitude),
-        source_count=1,
-        confidence_score=_compute_confidence(1),
     )
     session.add(event)
     await session.flush()  # Get the event ID
 
     # Create article linked to event
     _store_report(session, report, analysis.summary or report.description[:500], event.id)
+    await _refresh_corroboration(session, event)
 
     # Build semantic relationships with other recent events
     await _link_related_events(session, event, article_text)
