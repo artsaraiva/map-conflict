@@ -23,7 +23,7 @@ docker compose up --build
 ```
 
 Services started:
-- frontend: `http://localhost:3000`
+- frontend: `http://localhost:3001`
 - backend API: `http://localhost:8000`
 - postgres with PostGIS
 - redis
@@ -82,7 +82,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000
+Open http://localhost:3001
 
 ## Environment Variables
 
