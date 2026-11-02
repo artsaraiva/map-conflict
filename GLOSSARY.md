@@ -13,7 +13,7 @@ The outlet or account that published a Report, such as BBC, Reuters, `rnintel`, 
 _Avoid_: Feed, outlet, publisher
 
 **Report**:
-A single item published by one Source and received through one Feed: a news story, a Telegram post, a tweet.
+A single item published by one Source and received through one Feed: a news story, a Telegram post, a tweet. A Report belongs to at most one Event; it belongs to none when it is not geopolitical or cannot be placed.
 _Avoid_: Article, item, message, post
 
 ## Events
