@@ -1,6 +1,6 @@
 from pydantic import AfterValidator, BaseModel
 from datetime import datetime, timezone
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 
 # The columns are naive and hold UTC; mark them so clients don't read them as local time.
 UtcDatetime = Annotated[
@@ -65,8 +65,8 @@ class EventMapPoint(BaseModel):
         from_attributes = True
 
 
-class RelatedEventResponse(BaseModel):
-    """Lightweight event data returned by the /related endpoint."""
+class LinkResponse(BaseModel):
+    """The Event at the other end of a Link, with the Link's type and direction from the asked-for Event."""
 
     id: int
     title: str
@@ -78,5 +78,5 @@ class RelatedEventResponse(BaseModel):
     theater: Optional[str] = None
     confidence_score: Optional[float] = None
     created_at: UtcDatetime
-    relation_type: str
-    similarity_score: Optional[float] = None
+    link_type: str
+    direction: Literal["outgoing", "incoming"]

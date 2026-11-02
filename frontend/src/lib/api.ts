@@ -1,4 +1,4 @@
-import { EventMapPoint, GeoEvent, RelatedEvent, MapFilters, MapBounds } from "./types";
+import { EventMapPoint, GeoEvent, EventLink, MapFilters, MapBounds } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -77,8 +77,8 @@ export async function fetchEvent(eventId: number): Promise<GeoEvent> {
   return resolveGeoEvent(data);
 }
 
-export async function fetchRelatedEvents(eventId: number): Promise<RelatedEvent[]> {
-  const res = await fetch(`${API_URL}/api/events/${eventId}/related?limit=5`);
+export async function fetchEventLinks(eventId: number): Promise<EventLink[]> {
+  const res = await fetch(`${API_URL}/api/events/${eventId}/links`);
   if (!res.ok) return [];
   return res.json();
 }

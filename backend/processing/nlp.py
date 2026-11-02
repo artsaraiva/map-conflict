@@ -14,6 +14,7 @@ import spacy
 from openai import AsyncOpenAI
 
 from backend.core.config import get_settings
+from backend.models.event import Event
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,57 @@ Rules:
         countries=result.get("countries", []),
         is_geopolitical=result.get("is_geopolitical", False),
     )
+
+
+def _describe_event(event: Event) -> str:
+    event_type = event.event_type.value if event.event_type else "other"
+    return (f"{event.title} | {event.summary or ''} | type: {event_type} | "
+            f"place: {event.location_name} | time: {event.created_at:%Y-%m-%d %H:%M} UTC")
+
+
+async def relate_events(event: Event, candidates: list[Event]) -> dict[int, str | None]:
+    """
+    Ask OpenAI, in one call, how a new Event relates to each earlier candidate Event.
+    Maps candidate id to `response_to`, `escalation_of`, `same_campaign` or None.
+    With no OpenAI key, proposes no Links.
+    """
+    settings = get_settings()
+    if not settings.openai_api_key:
+        return {}
+
+    # Bounded, so a slow model delays Link proposal for one Event, not the Feed's Reports
+    client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=30, max_retries=1)
+    listed = "\n".join(f"- id {c.id}: {_describe_event(c)}" for c in candidates)
+
+    prompt = f"""A new geopolitical event was reported. Decide, for each earlier event, whether the new event is linked to it.
+
+New event: {_describe_event(event)}
+
+Earlier events:
+{listed}
+
+Link types:
+- "response_to": the new event answers the earlier one (e.g. an interception of, or retaliation for, an attack).
+- "escalation_of": the new event raises the stakes of the earlier one (larger scale, new weapons, new targets).
+- "same_campaign": both belong to the same deliberate, ongoing operation, with neither answering the other.
+- null: not linked. Similar wording, place or topic alone is not a link.
+
+Choose the most specific type: "response_to" or "escalation_of" over "same_campaign".
+
+Respond with JSON only, no other text. Schema:
+{{"links": {{"<earlier event id>": "response_to" | "escalation_of" | "same_campaign" | null}}}}
+"""
+
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1,
+        max_tokens=300,
+        response_format={"type": "json_object"},
+    )
+
+    links = json.loads(response.choices[0].message.content).get("links") or {}
+    return {int(event_id): link_type for event_id, link_type in links.items() if str(event_id).isdigit()}
 
 
 def _fallback_classification(title: str, description: str) -> ArticleAnalysis:

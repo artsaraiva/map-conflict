@@ -11,7 +11,7 @@ from backend.core.config import get_settings
 from backend.core.database import async_session
 from backend.processing.geocoder import geocode_location
 from backend.processing.intake import ingest
-from backend.processing.nlp import classify_article
+from backend.processing.nlp import classify_article, relate_events
 from backend.scraping.gdelt_scraper import scrape_gdelt
 from backend.scraping.rss_scraper import scrape_all_feeds
 from backend.scraping.telegram_scraper import scrape_telegram_channels
@@ -36,7 +36,7 @@ async def run_feed(name: str) -> int:
 
     for report in reports:
         report.feed = name
-    outcomes = await ingest(reports, classify_article, geocode_location, async_session)
+    outcomes = await ingest(reports, classify_article, geocode_location, relate_events, async_session)
 
     counts = Counter(o.kind for o in outcomes)
     logger.info(f"{name}: Report outcomes: {dict(counts)}")

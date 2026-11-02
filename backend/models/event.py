@@ -66,12 +66,6 @@ class Event(Base):
 
     # Relationships
     articles = relationship("Article", back_populates="event", lazy="raise")
-    related_to = relationship(
-        "EventRelationship",
-        foreign_keys="EventRelationship.source_event_id",
-        back_populates="source_event",
-        lazy="select",
-    )
 
     __table_args__ = (
         Index("idx_events_location", "latitude", "longitude"),
@@ -81,31 +75,24 @@ class Event(Base):
     )
 
 
-class EventRelationship(Base):
+class Link(Base):
     """
-    Directed link between two events indicating semantic similarity or
-    explicit narrative connection (e.g. retaliation, interception response).
+    A typed Link from a later Event to an earlier one: `response_to`, `escalation_of`
+    or `same_campaign` (whose direction carries no meaning). Two Events have at most one Link.
     """
 
-    __tablename__ = "event_relationships"
+    __tablename__ = "event_links"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    source_event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
-    target_event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
-    # How the target relates to the source: "similar", "followup", "retaliation", etc.
-    relation_type = Column(String(50), nullable=False, default="similar")
-    similarity_score = Column(Float, nullable=True)
+    from_event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
+    to_event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
+    link_type = Column(String(20), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    source_event = relationship(
-        "Event", foreign_keys=[source_event_id], back_populates="related_to"
-    )
-    target_event = relationship("Event", foreign_keys=[target_event_id])
-
     __table_args__ = (
-        UniqueConstraint("source_event_id", "target_event_id", name="uq_event_relationship"),
-        Index("idx_rel_source", "source_event_id"),
-        Index("idx_rel_target", "target_event_id"),
+        UniqueConstraint("from_event_id", "to_event_id", name="uq_event_link"),
+        Index("idx_link_from", "from_event_id"),
+        Index("idx_link_to", "to_event_id"),
     )
 
 

@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import ARRAY, String, func, select, type_coerce
+from sqlalchemy import ARRAY, String, case, func, or_, select, type_coerce
 from sqlalchemy.dialects.postgresql import aggregate_order_by, array
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta
 from typing import Optional
 
 from backend.core.database import get_db
-from backend.models.event import Event, Article, EventRelationship
-from backend.api.schemas import EventResponse, EventMapPoint, RelatedEventResponse
+from backend.models.event import Event, Article, Link
+from backend.api.schemas import EventResponse, EventMapPoint, LinkResponse
 
 router = APIRouter(prefix="/api/events", tags=["events"])
 
@@ -120,24 +120,19 @@ async def get_event(event_id: int, db: AsyncSession = Depends(get_db)):
     return EventResponse.model_validate(event)
 
 
-@router.get("/{event_id}/related", response_model=list[RelatedEventResponse])
-async def get_related_events(
-    event_id: int,
-    db: AsyncSession = Depends(get_db),
-    limit: int = Query(5, ge=1, le=20),
-):
-    """Return events semantically related to a given event, ordered by similarity score."""
+@router.get("/{event_id}/links", response_model=list[LinkResponse])
+async def get_event_links(event_id: int, db: AsyncSession = Depends(get_db)):
+    """Every Link touching the Event, newest linked Event first."""
+    other_id = case((Link.from_event_id == event_id, Link.to_event_id), else_=Link.from_event_id)
     result = await db.execute(
-        select(EventRelationship, Event)
-        .join(Event, Event.id == EventRelationship.target_event_id)
-        .where(EventRelationship.source_event_id == event_id)
-        .order_by(EventRelationship.similarity_score.desc())
-        .limit(limit)
+        select(Link, Event)
+        .join(Event, Event.id == other_id)
+        .where(or_(Link.from_event_id == event_id, Link.to_event_id == event_id))
+        .order_by(Event.created_at.desc(), Event.id.desc())
     )
-    rows = result.all()
 
     return [
-        RelatedEventResponse(
+        LinkResponse(
             id=event.id,
             title=event.title,
             event_type=event.event_type,
@@ -148,8 +143,8 @@ async def get_related_events(
             theater=event.theater,
             confidence_score=event.confidence_score,
             created_at=event.created_at,
-            relation_type=rel.relation_type,
-            similarity_score=rel.similarity_score,
+            link_type=link.link_type,
+            direction="outgoing" if link.from_event_id == event_id else "incoming",
         )
-        for rel, event in rows
+        for link, event in result.all()
     ]

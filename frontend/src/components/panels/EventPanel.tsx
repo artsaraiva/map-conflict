@@ -1,7 +1,7 @@
 "use client";
 
-import { GeoEvent, Article, RelatedEvent, EVENT_TYPE_CONFIG, SEVERITY_CONFIG } from "@/lib/types";
-import { fetchRelatedEvents } from "@/lib/api";
+import { GeoEvent, Article, EventLink, LinkType, EVENT_TYPE_CONFIG, SEVERITY_CONFIG } from "@/lib/types";
+import { fetchEventLinks } from "@/lib/api";
 import { formatTimeAgo, isTelegramChannel, getSourceLabel, getTelegramChannelUrl } from "@/lib/utils";
 import { getEmbedInfo, getVideoPlatformLabel, isTelegramLink, isLocalVideo } from "@/lib/media-utils";
 import clsx from "clsx";
@@ -476,6 +476,13 @@ function GroupedArticleCard({ group, heroImageUrl }: { group: ArticleGroup; hero
   );
 }
 
+// Read from the shown Event's end: an outgoing Link points to the earlier Event
+const LINK_LABELS: Record<LinkType, Record<EventLink["direction"], string>> = {
+  response_to: { outgoing: "Response to", incoming: "Responded to by" },
+  escalation_of: { outgoing: "Escalation of", incoming: "Escalated by" },
+  same_campaign: { outgoing: "Same campaign", incoming: "Same campaign" },
+};
+
 export default function EventPanel({
   event,
   isLoading,
@@ -483,7 +490,7 @@ export default function EventPanel({
   onEventSelect,
 }: EventPanelProps) {
   const [galleryErrors, setGalleryErrors] = useState<Set<number>>(new Set());
-  const [relatedEvents, setRelatedEvents] = useState<RelatedEvent[]>([]);
+  const [links, setLinks] = useState<EventLink[]>([]);
 
   // Group similar articles for deduped display — must be before early return
   const articleGroups = useMemo(
@@ -491,13 +498,13 @@ export default function EventPanel({
     [event?.articles]
   );
 
-  // Fetch related events whenever the selected event changes
+  // Fetch the Event's Links whenever the selected Event changes
   useEffect(() => {
     if (!event) {
-      setRelatedEvents([]);
+      setLinks([]);
       return;
     }
-    fetchRelatedEvents(event.id).then(setRelatedEvents).catch(() => setRelatedEvents([]));
+    fetchEventLinks(event.id).then(setLinks).catch(() => setLinks([]));
   }, [event?.id]);
 
   if (!event && !isLoading) return null;
@@ -702,19 +709,19 @@ export default function EventPanel({
               </div>
             )}
 
-            {/* ─── Related events ─── */}
-            {relatedEvents.length > 0 && (
+            {/* ─── Links ─── */}
+            {links.length > 0 && (
               <div>
                 <h3 className="mb-2 text-[11px] font-medium uppercase tracking-[0.24em] text-[#86a1aa]">
-                  Related Events ({relatedEvents.length})
+                  Links ({links.length})
                 </h3>
                 <div className="space-y-1.5">
-                  {relatedEvents.map((rel) => {
-                    const tc = EVENT_TYPE_CONFIG[rel.event_type];
+                  {links.map((link) => {
+                    const tc = EVENT_TYPE_CONFIG[link.event_type];
                     return (
                       <button
-                        key={rel.id}
-                        onClick={() => onEventSelect?.(rel.id)}
+                        key={link.id}
+                        onClick={() => onEventSelect?.(link.id)}
                         className="w-full rounded-xl border border-[#263740] bg-[#0f1820]/70 px-3 py-2.5 text-left transition-all hover:border-[#3a5260] hover:bg-[#14202a]"
                       >
                         <div className="flex items-start gap-2.5">
@@ -723,29 +730,26 @@ export default function EventPanel({
                             style={{ backgroundColor: tc?.color ?? "#8e97ab" }}
                           />
                           <div className="flex-1 min-w-0">
+                            <div className="mb-0.5 text-[10px] uppercase tracking-[0.18em] text-[#86a1aa]">
+                              {LINK_LABELS[link.link_type]?.[link.direction] ?? link.link_type}
+                            </div>
                             <div className="line-clamp-2 text-[13px] font-medium leading-snug text-[#dde4e0]">
-                              {rel.title}
+                              {link.title}
                             </div>
                             <div className="mt-1 flex items-center gap-2 text-[11px] text-[#6a7e84]">
-                              <span style={{ color: tc?.color ?? "#8e97ab" }}>{tc?.label ?? rel.event_type}</span>
+                              <span style={{ color: tc?.color ?? "#8e97ab" }}>{tc?.label ?? link.event_type}</span>
                               <span>·</span>
-                              <span>{rel.location_name}</span>
-                              {rel.theater && (
+                              <span>{link.location_name}</span>
+                              {link.theater && (
                                 <>
                                   <span>·</span>
-                                  <span className="text-[#4d6068]">{rel.theater}</span>
-                                </>
-                              )}
-                              {rel.similarity_score != null && (
-                                <>
-                                  <span>·</span>
-                                  <span className="text-[#4d6068]">{Math.round(rel.similarity_score * 100)}% match</span>
+                                  <span className="text-[#4d6068]">{link.theater}</span>
                                 </>
                               )}
                             </div>
                           </div>
                           <span className="flex-shrink-0 text-[10px] text-[#4d6068]">
-                            {formatTimeAgo(rel.created_at)}
+                            {formatTimeAgo(link.created_at)}
                           </span>
                         </div>
                       </button>
