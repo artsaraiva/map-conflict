@@ -222,3 +222,24 @@ async def test_concurrent_matching_reports_from_two_sources_make_one_event(sessi
     assert first.event.id == second.event.id
     async with session_factory() as s:
         assert await s.scalar(select(func.count()).select_from(Event)) == 1
+
+
+async def test_event_created_inside_a_theater_stores_its_name(session_factory):
+    classify = FakeClassifier(strike=geopolitical())  # geocoded to the southern Red Sea
+
+    [outcome] = await ingest([report("strike")], classify, geocode, session_factory)
+
+    async with session_factory() as s:
+        assert (await s.get(Event, outcome.event.id)).theater == "Red Sea and Bab el-Mandeb"
+
+
+async def test_event_created_outside_every_theater_stores_no_theater(session_factory):
+    classify = FakeClassifier(protest=geopolitical(event_type="internal_unrest", location="Paris"))
+
+    async def geocode_paris(name):
+        return GeocodedLocation(name=name, latitude=48.86, longitude=2.35)
+
+    [outcome] = await ingest([report("protest")], classify, geocode_paris, session_factory)
+
+    async with session_factory() as s:
+        assert (await s.get(Event, outcome.event.id)).theater is None
