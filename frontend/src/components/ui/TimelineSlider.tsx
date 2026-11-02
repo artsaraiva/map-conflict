@@ -1,58 +1,42 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import clsx from "clsx";
+import type { TimeRange } from "@/lib/map-view";
 
 interface TimelineSliderProps {
-  eventTimes: string[];
-  onTimeChange: (cursor: Date | null) => void;
+  range: TimeRange;
+  /** null means Live. */
+  cursor: Date | null;
+  onCursorChange: (cursor: Date | null) => void;
 }
 
 const STEPS = 48;
 
-// Initialiser runs once on first render — avoids impure-function-in-render lint error
-function getInitialNow() {
-  return Date.now();
-}
-
-export default function TimelineSlider({ eventTimes, onTimeChange }: TimelineSliderProps) {
+export default function TimelineSlider({ range, cursor, onCursorChange }: TimelineSliderProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState(STEPS);
-  // Capture session start time once (lazy-init so it only runs on mount)
-  const [sessionStart] = useState<number>(getInitialNow);
 
-  const oldestTime = useMemo(() => {
-    if (eventTimes.length === 0) return sessionStart - 72 * 3600 * 1000;
-    return Math.min(...eventTimes.map((t) => new Date(t).getTime()));
-  }, [eventTimes, sessionStart]);
-
-  const totalRange = sessionStart - oldestTime;
-
-  const cursorTime = useMemo(() => {
-    if (position === STEPS) return null;
-    const ratio = position / STEPS;
-    return new Date(oldestTime + ratio * totalRange);
-  }, [position, oldestTime, totalRange]);
+  const start = range.start.getTime();
+  const span = range.end.getTime() - start;
+  // The cursor is an absolute time; the thumb just shows where it sits in the current range.
+  const position =
+    cursor && span > 0
+      ? Math.min(STEPS, Math.max(0, Math.round(((cursor.getTime() - start) / span) * STEPS)))
+      : STEPS;
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = parseInt(e.target.value, 10);
-      setPosition(val);
-      const ratio = val / STEPS;
-      const ts = val === STEPS ? null : new Date(oldestTime + ratio * totalRange);
-      onTimeChange(ts);
+      onCursorChange(val === STEPS ? null : new Date(start + (val / STEPS) * span));
     },
-    [oldestTime, totalRange, onTimeChange]
+    [start, span, onCursorChange]
   );
 
-  const reset = useCallback(() => {
-    setPosition(STEPS);
-    onTimeChange(null);
-  }, [onTimeChange]);
+  const reset = useCallback(() => onCursorChange(null), [onCursorChange]);
 
   // Format the cursor label
-  const cursorLabel = cursorTime
-    ? cursorTime.toLocaleString("en-US", {
+  const cursorLabel = cursor
+    ? cursor.toLocaleString("en-US", {
         month: "short",
         day: "numeric",
         hour: "2-digit",
@@ -60,7 +44,7 @@ export default function TimelineSlider({ eventTimes, onTimeChange }: TimelineSli
       })
     : "Live";
 
-  const isReplaying = position < STEPS;
+  const isReplaying = cursor !== null;
 
   return (
     <div className="absolute bottom-8 left-1/2 z-40 -translate-x-1/2">

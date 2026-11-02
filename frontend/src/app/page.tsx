@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import { fetchMapPoints, fetchEvent, triggerPipeline, fetchStrategicHotspots } from "@/lib/api";
 import { GeoEvent, MapFilters, MapBounds, DEFAULT_FILTERS } from "@/lib/types";
+import { timeRange, visibleEvents } from "@/lib/map-view";
 import EventPanel from "@/components/panels/EventPanel";
 import EventList from "@/components/panels/EventList";
 import Header from "@/components/ui/Header";
@@ -35,11 +36,20 @@ export default function Home() {
   // Fetch map points with filters + viewport bounds
   const {
     data: mapPoints = [],
+    dataUpdatedAt,
     refetch: refetchPoints,
   } = useQuery({
     queryKey: ["map-points", filters, mapBounds],
     queryFn: () => fetchMapPoints(filters, mapBounds),
   });
+
+  // The current time moves forward each time map data loads, so the timeline reaches new Events
+  const [pageLoadedAt] = useState(() => new Date());
+  const now = useMemo(
+    () => (dataUpdatedAt ? new Date(dataUpdatedAt) : pageLoadedAt),
+    [dataUpdatedAt, pageLoadedAt]
+  );
+  const range = useMemo(() => timeRange(mapPoints, now), [mapPoints, now]);
 
   // Fetch curated strategic locations once
   const { data: strategicHotspots } = useQuery({
@@ -49,10 +59,10 @@ export default function Home() {
   });
 
   // Apply timeline cursor filter client-side — avoids extra API round-trips
-  const visiblePoints = useMemo(() => {
-    if (!timelineCursor) return mapPoints;
-    return mapPoints.filter((e) => new Date(e.created_at) <= timelineCursor);
-  }, [mapPoints, timelineCursor]);
+  const visiblePoints = useMemo(
+    () => visibleEvents(mapPoints, timelineCursor),
+    [mapPoints, timelineCursor]
+  );
 
   // Handle event click
   const handleEventClick = useCallback(
@@ -117,8 +127,9 @@ export default function Home() {
       <BriefingBar events={visiblePoints} />
 
       <TimelineSlider
-        eventTimes={mapPoints.map((e) => e.created_at)}
-        onTimeChange={setTimelineCursor}
+        range={range}
+        cursor={timelineCursor}
+        onCursorChange={setTimelineCursor}
       />
 
       <div className="pt-16">
