@@ -47,7 +47,6 @@ interface EventPointProps {
   article_count: number;
   color: string;
   pulseColor: string;
-  densityColor: string;
   size: number;
   pulseSize: number;
   signalOpacity: number;
@@ -237,7 +236,6 @@ export default function GeoMap({
           article_count: event.article_count,
           color: typeConfig?.color ?? "#8e97ab",
           pulseColor: typeConfig?.pulseColor ?? "rgba(142, 151, 171, 0.28)",
-          densityColor: typeConfig?.densityColor ?? "rgba(142, 151, 171, 0.16)",
           size: severityConfig?.size ?? 12,
           pulseSize: severityConfig?.pulseSize ?? 30,
           signalOpacity: severityConfig?.opacity ?? 0.72,

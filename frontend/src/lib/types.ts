@@ -90,7 +90,6 @@ export const EVENT_TYPE_CONFIG: Record<
     label: string;
     color: string;
     pulseColor: string;
-    densityColor: string;
     icon: string;
     family: EventVisualFamily;
   }
@@ -99,7 +98,6 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Armed Conflict",
     color: "#ff5b4d",
     pulseColor: "rgba(255, 91, 77, 0.36)",
-    densityColor: "rgba(255, 91, 77, 0.2)",
     icon: "crossed-swords",
     family: "conflict",
   },
@@ -107,7 +105,6 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Naval Pressure",
     color: "#6e8dff",
     pulseColor: "rgba(110, 141, 255, 0.34)",
-    densityColor: "rgba(110, 141, 255, 0.2)",
     icon: "anchor",
     family: "strategic",
   },
@@ -115,7 +112,6 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Diplomatic Tension",
     color: "#75d1ff",
     pulseColor: "rgba(117, 209, 255, 0.32)",
-    densityColor: "rgba(117, 209, 255, 0.18)",
     icon: "handshake",
     family: "diplomatic",
   },
@@ -123,7 +119,6 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Sanctions",
     color: "#f2b34f",
     pulseColor: "rgba(242, 179, 79, 0.34)",
-    densityColor: "rgba(242, 179, 79, 0.2)",
     icon: "ban",
     family: "economic",
   },
@@ -131,7 +126,6 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Internal Unrest",
     color: "#d675ff",
     pulseColor: "rgba(214, 117, 255, 0.34)",
-    densityColor: "rgba(214, 117, 255, 0.18)",
     icon: "megaphone",
     family: "instability",
   },
@@ -139,7 +133,6 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Military Movement",
     color: "#ff7c44",
     pulseColor: "rgba(255, 124, 68, 0.34)",
-    densityColor: "rgba(255, 124, 68, 0.18)",
     icon: "tank",
     family: "strategic",
   },
@@ -147,7 +140,6 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Trade Dispute",
     color: "#ffcf6a",
     pulseColor: "rgba(255, 207, 106, 0.3)",
-    densityColor: "rgba(255, 207, 106, 0.18)",
     icon: "chart",
     family: "economic",
   },
@@ -155,7 +147,6 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Humanitarian",
     color: "#57d7a7",
     pulseColor: "rgba(87, 215, 167, 0.3)",
-    densityColor: "rgba(87, 215, 167, 0.18)",
     icon: "heart",
     family: "humanitarian",
   },
@@ -163,7 +154,6 @@ export const EVENT_TYPE_CONFIG: Record<
     label: "Other",
     color: "#8e97ab",
     pulseColor: "rgba(142, 151, 171, 0.28)",
-    densityColor: "rgba(142, 151, 171, 0.16)",
     icon: "info",
     family: "neutral",
   },

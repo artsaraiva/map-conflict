@@ -48,7 +48,6 @@ export interface DensityCell {
   intensity: number;
   radius: number;
   color: string;
-  densityColor: string;
 }
 
 /**
@@ -84,7 +83,6 @@ export function densityCells(events: Placed[]): DensityCell[] {
       intensity: influence,
       radius: 26 + severityWeight * 32,
       color: typeConfig?.color ?? "#8e97ab",
-      densityColor: typeConfig?.densityColor ?? "rgba(142, 151, 171, 0.16)",
     });
   }
 
