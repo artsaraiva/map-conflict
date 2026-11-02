@@ -65,7 +65,7 @@ class Event(Base):
     theater = Column(String(100), nullable=True)
 
     # Relationships
-    articles = relationship("Article", back_populates="event", lazy="selectin")
+    articles = relationship("Article", back_populates="event", lazy="raise")
     related_to = relationship(
         "EventRelationship",
         foreign_keys="EventRelationship.source_event_id",

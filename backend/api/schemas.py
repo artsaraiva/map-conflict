@@ -38,11 +38,6 @@ class EventResponse(BaseModel):
         from_attributes = True
 
 
-class EventListResponse(BaseModel):
-    events: list[EventResponse]
-    total: int
-
-
 class EventMapPoint(BaseModel):
     """Lightweight event data for map rendering."""
 

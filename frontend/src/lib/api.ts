@@ -1,4 +1,4 @@
-import { EventMapPoint, GeoEvent, RelatedEvent, EventListResponse, MapFilters, MapBounds } from "./types";
+import { EventMapPoint, GeoEvent, RelatedEvent, MapFilters, MapBounds } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -74,24 +74,6 @@ export async function fetchEvent(eventId: number): Promise<GeoEvent> {
 export async function fetchRelatedEvents(eventId: number): Promise<RelatedEvent[]> {
   const res = await fetch(`${API_URL}/api/events/${eventId}/related?limit=5`);
   if (!res.ok) return [];
-  return res.json();
-}
-
-export async function fetchEvents(params?: {
-  sinceHours?: number;
-  eventType?: string;
-  severity?: string;
-  limit?: number;
-}): Promise<EventListResponse> {
-  const searchParams = new URLSearchParams();
-  if (params?.sinceHours)
-    searchParams.set("since_hours", params.sinceHours.toString());
-  if (params?.eventType) searchParams.set("event_type", params.eventType);
-  if (params?.severity) searchParams.set("severity", params.severity);
-  if (params?.limit) searchParams.set("limit", params.limit.toString());
-
-  const res = await fetch(`${API_URL}/api/events/?${searchParams}`);
-  if (!res.ok) throw new Error("Failed to fetch events");
   return res.json();
 }
 
