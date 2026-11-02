@@ -7,8 +7,7 @@
       "properties": {
         "name": "Strait of Hormuz",
         "display_name": "Strait of Hormuz, Persian Gulf",
-        "aliases": ["hormuz", "strait of hormuz", "hormuz strait"],
-        "region": "middle_east"
+        "aliases": ["hormuz", "strait of hormuz", "hormuz strait"]
       }
     },
     {
@@ -17,8 +16,7 @@
       "properties": {
         "name": "Gaza Strip",
         "display_name": "Gaza Strip, Palestine",
-        "aliases": ["gaza", "gaza strip", "gaza city"],
-        "region": "middle_east"
+        "aliases": ["gaza", "gaza strip", "gaza city"]
       }
     },
     {
@@ -27,8 +25,7 @@
       "properties": {
         "name": "West Bank",
         "display_name": "West Bank, Palestine",
-        "aliases": ["west bank", "judea and samaria"],
-        "region": "middle_east"
+        "aliases": ["west bank", "judea and samaria"]
       }
     },
     {
@@ -37,8 +34,7 @@
       "properties": {
         "name": "Eastern Ukraine",
         "display_name": "Donbas Region, Eastern Ukraine",
-        "aliases": ["donbas", "donetsk", "luhansk", "eastern ukraine", "donbass"],
-        "region": "europe"
+        "aliases": ["donbas", "donetsk", "luhansk", "eastern ukraine", "donbass"]
       }
     },
     {
@@ -47,8 +43,7 @@
       "properties": {
         "name": "Crimea",
         "display_name": "Crimean Peninsula",
-        "aliases": ["crimea", "crimean peninsula"],
-        "region": "europe"
+        "aliases": ["crimea", "crimean peninsula"]
       }
     },
     {
@@ -57,8 +52,7 @@
       "properties": {
         "name": "Taiwan Strait",
         "display_name": "Taiwan Strait",
-        "aliases": ["taiwan strait", "taiwan", "formosa strait", "strait of taiwan"],
-        "region": "east_asia"
+        "aliases": ["taiwan strait", "taiwan", "formosa strait", "strait of taiwan"]
       }
     },
     {
@@ -67,8 +61,7 @@
       "properties": {
         "name": "South China Sea",
         "display_name": "South China Sea",
-        "aliases": ["south china sea", "spratly islands", "scarborough shoal"],
-        "region": "east_asia"
+        "aliases": ["south china sea", "spratly islands", "scarborough shoal"]
       }
     },
     {
@@ -77,8 +70,7 @@
       "properties": {
         "name": "Kashmir",
         "display_name": "Kashmir Region",
-        "aliases": ["kashmir", "jammu and kashmir", "line of control", "aksai chin", "ladakh"],
-        "region": "south_asia"
+        "aliases": ["kashmir", "jammu and kashmir", "line of control", "aksai chin", "ladakh"]
       }
     },
     {
@@ -87,8 +79,7 @@
       "properties": {
         "name": "Korean DMZ",
         "display_name": "Korean Demilitarized Zone",
-        "aliases": ["dmz", "korean dmz", "38th parallel", "demilitarized zone"],
-        "region": "east_asia"
+        "aliases": ["dmz", "korean dmz", "38th parallel", "demilitarized zone"]
       }
     },
     {
@@ -97,8 +88,7 @@
       "properties": {
         "name": "Bab el-Mandeb",
         "display_name": "Bab el-Mandeb Strait",
-        "aliases": ["bab el-mandeb", "bab al-mandab", "red sea", "gulf of aden"],
-        "region": "middle_east"
+        "aliases": ["bab el-mandeb", "bab al-mandab", "red sea", "gulf of aden"]
       }
     },
     {
@@ -107,8 +97,7 @@
       "properties": {
         "name": "Suez Canal",
         "display_name": "Suez Canal, Egypt",
-        "aliases": ["suez canal", "suez"],
-        "region": "middle_east"
+        "aliases": ["suez canal", "suez"]
       }
     },
     {
@@ -117,8 +106,7 @@
       "properties": {
         "name": "Panama Canal",
         "display_name": "Panama Canal, Panama",
-        "aliases": ["panama canal", "panama"],
-        "region": "americas"
+        "aliases": ["panama canal", "panama"]
       }
     },
     {
@@ -127,8 +115,7 @@
       "properties": {
         "name": "Aleppo",
         "display_name": "Aleppo, Syria",
-        "aliases": ["aleppo", "northern syria"],
-        "region": "middle_east"
+        "aliases": ["aleppo", "northern syria"]
       }
     },
     {
@@ -137,8 +124,7 @@
       "properties": {
         "name": "Baghdad",
         "display_name": "Baghdad, Iraq",
-        "aliases": ["baghdad", "iraq"],
-        "region": "middle_east"
+        "aliases": ["baghdad", "iraq"]
       }
     },
     {
@@ -147,8 +133,7 @@
       "properties": {
         "name": "Tehran",
         "display_name": "Tehran, Iran",
-        "aliases": ["tehran", "iran"],
-        "region": "middle_east"
+        "aliases": ["tehran", "iran"]
       }
     },
     {
@@ -157,8 +142,7 @@
       "properties": {
         "name": "Nairobi",
         "display_name": "Nairobi, Kenya",
-        "aliases": ["nairobi", "kenya"],
-        "region": "africa"
+        "aliases": ["nairobi", "kenya"]
       }
     },
     {
@@ -167,8 +151,7 @@
       "properties": {
         "name": "Kampala",
         "display_name": "Kampala, Uganda",
-        "aliases": ["kampala", "uganda"],
-        "region": "africa"
+        "aliases": ["kampala", "uganda"]
       }
     },
     {
@@ -177,8 +160,7 @@
       "properties": {
         "name": "Eastern Congo",
         "display_name": "Eastern DRC",
-        "aliases": ["eastern congo", "drc", "congo", "goma", "north kivu"],
-        "region": "africa"
+        "aliases": ["eastern congo", "drc", "congo", "goma", "north kivu"]
       }
     },
     {
@@ -187,8 +169,7 @@
       "properties": {
         "name": "Khartoum",
         "display_name": "Khartoum, Sudan",
-        "aliases": ["khartoum", "sudan"],
-        "region": "africa"
+        "aliases": ["khartoum", "sudan"]
       }
     },
     {
@@ -197,8 +178,7 @@
       "properties": {
         "name": "Mogadishu",
         "display_name": "Mogadishu, Somalia",
-        "aliases": ["mogadishu", "somalia"],
-        "region": "africa"
+        "aliases": ["mogadishu", "somalia"]
       }
     },
     {
@@ -207,8 +187,7 @@
       "properties": {
         "name": "Addis Ababa",
         "display_name": "Addis Ababa, Ethiopia",
-        "aliases": ["addis ababa", "ethiopia", "tigray"],
-        "region": "africa"
+        "aliases": ["addis ababa", "ethiopia", "tigray"]
       }
     },
     {
@@ -217,8 +196,7 @@
       "properties": {
         "name": "Kabul",
         "display_name": "Kabul, Afghanistan",
-        "aliases": ["kabul", "afghanistan"],
-        "region": "south_asia"
+        "aliases": ["kabul", "afghanistan"]
       }
     },
     {
@@ -227,8 +205,7 @@
       "properties": {
         "name": "Riyadh",
         "display_name": "Riyadh, Saudi Arabia",
-        "aliases": ["riyadh", "saudi arabia", "saudi"],
-        "region": "middle_east"
+        "aliases": ["riyadh", "saudi arabia", "saudi"]
       }
     },
     {
@@ -237,8 +214,7 @@
       "properties": {
         "name": "Sanaa",
         "display_name": "Sanaa, Yemen",
-        "aliases": ["sanaa", "yemen", "houthi"],
-        "region": "middle_east"
+        "aliases": ["sanaa", "yemen", "houthi"]
       }
     },
     {
@@ -247,8 +223,7 @@
       "properties": {
         "name": "Beirut",
         "display_name": "Beirut, Lebanon",
-        "aliases": ["beirut", "lebanon", "hezbollah"],
-        "region": "middle_east"
+        "aliases": ["beirut", "lebanon", "hezbollah"]
       }
     },
     {
@@ -257,8 +232,7 @@
       "properties": {
         "name": "India-China Border",
         "display_name": "India-China LAC (Line of Actual Control)",
-        "aliases": ["lac", "line of actual control", "india china border", "galwan valley", "arunachal pradesh"],
-        "region": "south_asia"
+        "aliases": ["lac", "line of actual control", "india china border", "galwan valley", "arunachal pradesh"]
       }
     },
     {
@@ -267,8 +241,7 @@
       "properties": {
         "name": "Istanbul",
         "display_name": "Istanbul, Turkey",
-        "aliases": ["istanbul", "bosphorus", "turkish straits"],
-        "region": "europe"
+        "aliases": ["istanbul", "bosphorus", "turkish straits"]
       }
     },
     {
@@ -277,8 +250,7 @@
       "properties": {
         "name": "Strait of Malacca",
         "display_name": "Strait of Malacca",
-        "aliases": ["malacca", "strait of malacca", "malacca strait"],
-        "region": "southeast_asia"
+        "aliases": ["malacca", "strait of malacca", "malacca strait"]
       }
     },
     {
@@ -287,8 +259,7 @@
       "properties": {
         "name": "Kuwait",
         "display_name": "Kuwait",
-        "aliases": ["kuwait", "persian gulf"],
-        "region": "middle_east"
+        "aliases": ["kuwait", "persian gulf"]
       }
     },
     {
@@ -297,8 +268,7 @@
       "properties": {
         "name": "Moscow",
         "display_name": "Moscow, Russia",
-        "aliases": ["moscow", "kremlin"],
-        "region": "europe"
+        "aliases": ["moscow", "kremlin"]
       }
     },
     {
@@ -307,8 +277,7 @@
       "properties": {
         "name": "Kyiv",
         "display_name": "Kyiv, Ukraine",
-        "aliases": ["kyiv", "kiev", "ukraine"],
-        "region": "europe"
+        "aliases": ["kyiv", "kiev", "ukraine"]
       }
     },
     {
@@ -317,8 +286,7 @@
       "properties": {
         "name": "Washington DC",
         "display_name": "Washington DC, USA",
-        "aliases": ["washington", "washington dc", "pentagon", "white house"],
-        "region": "americas"
+        "aliases": ["washington", "washington dc", "pentagon", "white house"]
       }
     },
     {
@@ -327,8 +295,7 @@
       "properties": {
         "name": "Beijing",
         "display_name": "Beijing, China",
-        "aliases": ["beijing", "china"],
-        "region": "east_asia"
+        "aliases": ["beijing", "china"]
       }
     }
   ]
